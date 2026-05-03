@@ -13,13 +13,17 @@ const App: React.FC = () => {
 歡迎使用 **MeetingSummary Pro**！本工具利用 Google Gemini 1.5 的多模態能力，直接分析您的會議音訊並生成總結。
 
 ### 🛠️ 操作步驟 (Step-by-Step)
-1. **填入金鑰**：在上方輸入框填入您的 [Gemini API Key](https://aistudio.google.com/)。
-2. **開始會議**：點擊 **Start Meeting**，系統會開始錄製您電腦麥克風的聲音。
-3. **錄音監控**：您可以透過中間的計時器與動態指示器確認錄音狀態。
-4. **結束並總結**：點擊 **Stop Recording**，系統會將音訊傳送至 Gemini。
-5. **檢視分析**：
-   - **角色辨識**：Gemini 會自動辨識不同發言者 (Speaker 1, 2...)。
-   - **智慧總結**：自動提煉決策點與待辦事項。
+1. **選擇服務商**：在上方下拉選單選擇您擁有的 API 服務商。
+2. **填入金鑰**：在輸入框填入對應的 API Key。
+3. **開始會議**：點擊 **Start Meeting**，系統會開始錄製您電腦麥克風的聲音。
+4. **結束並總結**：點擊 **Stop Recording**，系統會自動辨識發言人並生成總結。
+
+### 🎁 免費資源獲取 (Free API Keys)
+如果您還沒有 API Key，可以從以下官方渠道獲取免費額度：
+- **[Google AI Studio (Gemini)](https://aistudio.google.com/)**: 目前提供最慷慨的免費層級，支援音訊直傳。
+- **[AssemblyAI](https://www.assemblyai.com/)**: 提供 $50 試用金，具備頂級的角色辨識能力。
+- **[Deepgram](https://www.deepgram.com/)**: 註冊即贈送 $200 額度，語音辨識速度極快。
+- **[Groq Cloud](https://console.groq.com/)**: 適合極速文字總結（Llama 3 模型）。
 
 ---
 *提示：建議在安靜環境下錄音，以獲得最佳的角色辨識效果。*

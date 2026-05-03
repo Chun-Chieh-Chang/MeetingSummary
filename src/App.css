@@ -222,6 +222,18 @@
   margin-top: 24px;
 }
 
+.markdown a {
+  color: var(--accent-hover);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--accent-hover);
+  transition: all 0.3s;
+}
+
+.markdown a:hover {
+  color: var(--accent-brand);
+  border-bottom-style: solid;
+}
+
 .markdown ul, .markdown ol {
   padding-left: 20px;
 }
