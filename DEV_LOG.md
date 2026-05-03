@@ -25,12 +25,16 @@ Initialize the `MeetingSummary` project with a robust Knowledge Base (Wiki) stru
 - [x] Implement **Meeting History Persistence** (localStorage).
 - [x] Add **History UI** (List view, Item loading, Delete functionality).
 - [x] Implement **Export Functionality** (Markdown Download, PDF Print).
+- [x] Enhance **Microphone Error Handling** (Specific advice for NotFound/NotAllowed).
 - [ ] Implement actual API callers for AssemblyAI and Deepgram.
 
 ### 🔍 Analysis (RCA - Root Cause Analysis)
 - **Problem**: GitHub Actions build failed with a TypeScript error.
 - **Root Cause**: A type mismatch occurred in `App.tsx` because the `transcript` state was changed from an array to a string, but a legacy function (`addMockTranscript`) still attempted to update it as an array.
 - **Solution**: Removed all legacy transcription logic and ensured the state is handled consistently as a string, aligning with the Gemini API response format. Verified the fix using `npx tsc` locally.
+- **Problem**: Microphone access fails with `NotFoundError`.
+- **Root Cause**: No physical microphone connected or browser unable to access the device due to OS-level privacy settings.
+- **Solution**: Improved error handling to provide actionable advice (check hardware, check Windows privacy settings, check browser permissions). Added safety checks for `navigator.mediaDevices`.
 - **Problem (Legacy)**: Traditional STT (like OpenAI Whisper) often requires a separate diarization step.
 - **Root Cause**: Audio and text models are usually disjoint.
 - **Solution**: Gemini 1.5 Pro allows "Native Multimodal Reasoning", where the model listens to the audio and writes the diarized transcript directly, eliminating the need for complex pipeline orchestration.

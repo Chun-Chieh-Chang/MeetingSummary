@@ -105,6 +105,12 @@ const App: React.FC = () => {
 
   const startRecording = async () => {
     try {
+      // Check if mediaDevices is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert("您的瀏覽器不支援錄音功能，或目前不在安全環境 (HTTPS/Localhost) 下。");
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
@@ -129,9 +135,18 @@ const App: React.FC = () => {
       timerRef.current = window.setInterval(() => {
         setDuration((prev) => prev + 1);
       }, 1000);
-    } catch (err) {
-      console.error("Microphone access denied:", err);
-      alert("Please allow microphone access to record meetings.");
+    } catch (err: any) {
+      console.error("Microphone Access Error:", err);
+      
+      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        alert("❌ 找不到麥克風設備。請檢查您的麥克風是否已插入，並在 Windows 設定中開啟麥克風存取權限。");
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert("❌ 麥克風權限被拒絕。請點擊網址列左側的鎖頭圖示，並選擇『允許使用麥克風』。");
+      } else {
+        alert(`❌ 錄音啟動失敗: ${err.message}`);
+      }
+      
+      setIsRecording(false);
     }
   };
 
