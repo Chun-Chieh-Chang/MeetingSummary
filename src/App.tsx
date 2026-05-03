@@ -118,11 +118,35 @@ const App: React.FC = () => {
     reader.onloadend = async () => {
       const base64Data = (reader.result as string).split(',')[1];
       const prompt = `
-        You are a professional meeting assistant. Listen to the provided audio.
-        1. Provide a verbatim transcript but clearly label the different speakers (e.g., Speaker 1, Speaker 2).
-        2. Provide a concise summary of the meeting.
-        3. List the Key Decisions and Action Items (with owners if mentioned).
-        Output the result in clear Markdown format.
+        ## 角色設定
+        你是一位專業的行政助理與戰略分析師。請仔細聽取這段會議音訊，並依照以下結構進行分析與記錄。
+        請使用 **繁體中文 (zh-TW)** 進行輸出，並保持專業、簡潔的語氣。
+
+        ## 輸出規範 (Markdown 格式)
+
+        ### 1. 執行摘要 (Executive Summary)
+        - 用 3-5 句話概括會議的核心目的與最終結論。
+
+        ### 2. 角色標註逐字稿 (Diarized Transcript)
+        - 標註發言者 (例如：發言者 1, 發言者 2)。
+        - 如果能從對話中得知姓名，請直接使用姓名。
+        - 紀錄關鍵對話內容，省略贅字，保持語意流暢。
+
+        ### 3. 議題深度分析 (Topic Analysis)
+        - 條列會議中討論的所有主要議題。
+        - 簡述各議題的討論進度或不同觀點。
+
+        ### 4. 決策紀錄與待辦事項 (Decisions & Action Items)
+        | 類型 | 內容描述 | 負責人 | 期限/備註 |
+        | :--- | :--- | :--- | :--- |
+        | [決策/待辦] | 具體描述 | 若提及請標註 | 若提及請標註 |
+
+        ### 5. 會議氛圍與建議 (Tone & Insights)
+        - 簡述會議氛圍（如：積極、嚴肅、分歧）。
+        - 提供 1-2 個後續跟進的專業建議。
+
+        ---
+        請確保排版優雅，適合在高階主管會議後直接閱讀。
       `;
 
       const result = await model.generateContent([

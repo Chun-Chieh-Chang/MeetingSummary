@@ -21,8 +21,9 @@ Initialize the `MeetingSummary` project with a robust Knowledge Base (Wiki) stru
 - [x] Integrate `@google/generative-ai` SDK.
 - [x] Implement Embedded User Guide in UI (Initial State).
 - [x] Implement Multi-Provider API Selector (Gemini, AssemblyAI, Deepgram).
+- [x] Optimize Gemini Prompt to **v2.0** (Professional Structured Output in zh-TW).
 - [ ] Implement actual API callers for AssemblyAI and Deepgram.
-- [ ] Refine Gemini Prompt for better Diarization accuracy.
+- [ ] Implement local storage for recording history.
 
 ### 🔍 Analysis (RCA - Root Cause Analysis)
 - **Problem**: GitHub Actions build failed with a TypeScript error.

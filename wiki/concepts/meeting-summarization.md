@@ -2,18 +2,22 @@
 
 This document outlines the core logic and patterns used to transform raw transcripts into structured meeting summaries.
 
-## 1. Goal
-To provide a concise, actionable summary that includes:
-- **Key Decisions**: Major conclusions reached.
-- **Action Items**: Tasks assigned with owners and deadlines.
-- **Follow-up Topics**: Issues that need further discussion.
+## 📋 Optimized Summarization Structure (v2.0)
 
-## 2. Process
-1.  **Cleaning**: Remove filler words and redundant chatter.
-2.  **Context Identification**: Determine the primary goal of the meeting.
-3.  **Synthesis**: Group related discussions into thematic blocks.
-4.  **Extraction**: Isolate tasks and decisions.
+為了確保輸出的專業性與可讀性，系統採用以下結構化模板：
 
-## 3. Design Patterns
-- **Role-Based Summarization**: Tailoring the summary for different stakeholders (e.g., developers vs. managers).
-- **Temporal Context**: Linking the summary to previous and future meetings.
+1.  **Executive Summary**: 核心結論的高層次概括。
+2.  **Diarized Transcript**: 自動標註發言人的流暢逐字稿（省略語氣助詞）。
+3.  **Topic Analysis**: 深度拆解討論議題。
+4.  **Decision & Action Table**: 使用表格形式明確紀錄決策與負責人。
+5.  **Tone & Insights**: 提供會議氛圍分析與後續建議。
+
+## 🤖 Prompt Strategy
+- **Language**: Forced `zh-TW` (Traditional Chinese).
+- **Role**: Executive Assistant & Strategic Analyst.
+- **Filtering**: Instructed to remove filler words for a clean reading experience.
+
+## 🔗 Related Entities
+- [backend](../entities/backend.md)
+- [audio-engine](../entities/audio-engine.md)
+- [project-requirements](../entities/project-requirements.md)
