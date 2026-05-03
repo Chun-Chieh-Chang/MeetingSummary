@@ -4,6 +4,7 @@ import './App.css';
 
 
 const App: React.FC = () => {
+  const [provider, setProvider] = useState<'gemini' | 'assemblyai' | 'deepgram'>('gemini');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState<string>(`
@@ -26,6 +27,8 @@ const App: React.FC = () => {
   const [summary, setSummary] = useState<string>('✨ 系統已就緒，請填入 API Key 並開始會議。');
   const [duration, setDuration] = useState(0);
   const [apiKey, setApiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
+  const [assemblyKey, setAssemblyKey] = useState(import.meta.env.VITE_ASSEMBLYAI_API_KEY || '');
+  const [deepgramKey, setDeepgramKey] = useState(import.meta.env.VITE_DEEPGRAM_API_KEY || '');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -77,52 +80,62 @@ const App: React.FC = () => {
 
 
   const processAudio = async (blob: Blob) => {
-    if (!apiKey) {
-      alert("Please provide a Gemini API Key.");
+    const currentKey = provider === 'gemini' ? apiKey : (provider === 'assemblyai' ? assemblyKey : deepgramKey);
+    
+    if (!currentKey) {
+      alert(`Please provide an API Key for ${provider}.`);
       return;
     }
 
     setIsProcessing(true);
-    setSummary("Gemini is listening to your meeting and identifying speakers...");
+    setSummary(`${provider.toUpperCase()} is analyzing your meeting...`);
     
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-      // Convert Blob to Base64
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      reader.onloadend = async () => {
-        const base64Data = (reader.result as string).split(',')[1];
-
-        const prompt = `
-          You are a professional meeting assistant. Listen to the provided audio.
-          1. Provide a verbatim transcript but clearly label the different speakers (e.g., Speaker 1, Speaker 2).
-          2. Provide a concise summary of the meeting.
-          3. List the Key Decisions and Action Items (with owners if mentioned).
-          Output the result in clear Markdown format.
-        `;
-
-        const result = await model.generateContent([
-          prompt,
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: blob.type
-            }
-          }
-        ]);
-
-        const responseText = result.response.text();
-        setTranscript(responseText); // Gemini returns everything together usually
-        setSummary("Analysis Complete.");
-        setIsProcessing(false);
-      };
+      if (provider === 'gemini') {
+        await processWithGemini(blob, currentKey);
+      } else {
+        // Placeholder for future implementation of other providers
+        setSummary(`${provider.toUpperCase()} integration is reserved. Currently implementing...`);
+        setTimeout(() => setIsProcessing(false), 2000);
+      }
     } catch (err) {
-      console.error("Gemini API Error:", err);
-      setSummary("Error processing audio. Please check your API Key and internet connection.");
+      console.error(`${provider.toUpperCase()} Error:`, err);
+      setSummary("Error processing audio. Please check your credentials.");
       setIsProcessing(false);
     }
+  };
+
+  const processWithGemini = async (blob: Blob, key: string) => {
+    const genAI = new GoogleGenerativeAI(key);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const reader = new FileReader();
+    reader.readAsDataURL(blob);
+    reader.onloadend = async () => {
+      const base64Data = (reader.result as string).split(',')[1];
+      const prompt = `
+        You are a professional meeting assistant. Listen to the provided audio.
+        1. Provide a verbatim transcript but clearly label the different speakers (e.g., Speaker 1, Speaker 2).
+        2. Provide a concise summary of the meeting.
+        3. List the Key Decisions and Action Items (with owners if mentioned).
+        Output the result in clear Markdown format.
+      `;
+
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: blob.type
+          }
+        }
+      ]);
+
+      const responseText = result.response.text();
+      setTranscript(responseText);
+      setSummary("Analysis Complete (Gemini).");
+      setIsProcessing(false);
+    };
   };
 
   const formatTime = (seconds: number) => {
@@ -141,13 +154,43 @@ const App: React.FC = () => {
       <main className="dashboard">
         <section className="controls glass-card">
           <div className="api-config">
-            <input 
-              type="password" 
-              placeholder="Enter Gemini API Key" 
-              value={apiKey} 
-              onChange={(e) => setApiKey(e.target.value)}
-              className="api-input"
-            />
+            <select 
+              value={provider} 
+              onChange={(e) => setProvider(e.target.value as any)}
+              className="provider-select"
+            >
+              <option value="gemini">Google Gemini</option>
+              <option value="assemblyai">AssemblyAI</option>
+              <option value="deepgram">Deepgram</option>
+            </select>
+
+            {provider === 'gemini' && (
+              <input 
+                type="password" 
+                placeholder="Enter Gemini API Key" 
+                value={apiKey} 
+                onChange={(e) => setApiKey(e.target.value)}
+                className="api-input"
+              />
+            )}
+            {provider === 'assemblyai' && (
+              <input 
+                type="password" 
+                placeholder="Enter AssemblyAI API Key" 
+                value={assemblyKey} 
+                onChange={(e) => setAssemblyKey(e.target.value)}
+                className="api-input"
+              />
+            )}
+            {provider === 'deepgram' && (
+              <input 
+                type="password" 
+                placeholder="Enter Deepgram API Key" 
+                value={deepgramKey} 
+                onChange={(e) => setDeepgramKey(e.target.value)}
+                className="api-input"
+              />
+            )}
           </div>
 
           <div className="recording-status">
