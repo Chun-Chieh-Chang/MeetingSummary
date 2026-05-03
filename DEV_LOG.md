@@ -24,8 +24,8 @@ Initialize the `MeetingSummary` project with a robust Knowledge Base (Wiki) stru
 - [x] Optimize Gemini Prompt to **v2.0** (Professional Structured Output in zh-TW).
 - [x] Implement **Meeting History Persistence** (localStorage).
 - [x] Add **History UI** (List view, Item loading, Delete functionality).
+- [x] Implement **Export Functionality** (Markdown Download, PDF Print).
 - [ ] Implement actual API callers for AssemblyAI and Deepgram.
-- [ ] Implement export functionality (PDF/Markdown).
 
 ### 🔍 Analysis (RCA - Root Cause Analysis)
 - **Problem**: GitHub Actions build failed with a TypeScript error.

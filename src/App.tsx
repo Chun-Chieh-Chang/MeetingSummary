@@ -86,6 +86,23 @@ const App: React.FC = () => {
     setView('current');
   };
 
+  const exportToMarkdown = () => {
+    if (!transcript) return;
+    const blob = new Blob([transcript], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Meeting_Summary_${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const exportToPDF = () => {
+    window.print();
+  };
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -302,7 +319,13 @@ const App: React.FC = () => {
           {view === 'current' ? (
             <>
               <section className="transcript-panel glass-card">
-                <h3>Transcript & Analysis</h3>
+                <div className="panel-header">
+                  <h3>Transcript & Analysis</h3>
+                  <div className="export-actions">
+                    <button onClick={exportToMarkdown} title="Export Markdown" className="icon-btn">📄 MD</button>
+                    <button onClick={exportToPDF} title="Print PDF" className="icon-btn">🖨️ PDF</button>
+                  </div>
+                </div>
                 <div className="scroll-area">
                   {isProcessing && <div className="loading-spinner">Processing Audio...</div>}
                   {!transcript && !isProcessing && <p className="empty-state">No analysis yet...</p>}

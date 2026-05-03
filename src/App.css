@@ -154,6 +154,36 @@
   letter-spacing: 1px;
 }
 
+.transcript-panel .panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.export-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.icon-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.icon-btn:hover {
+  background: var(--accent-brand);
+  color: white;
+  border-color: var(--accent-brand);
+}
+
 .scroll-area {
   flex: 1;
   overflow-y: auto;
@@ -346,5 +376,60 @@
 @media (max-width: 768px) {
   .content-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .app-header, .controls, .summary-panel, .view-toggle, .export-actions, .app-footer, .loading-spinner {
+    display: none !important;
+  }
+
+  body, .app-container, .dashboard {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .glass-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+
+  .transcript-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .scroll-area {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .summary-content {
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+
+  .markdown h1, .markdown h2, .markdown h3 {
+    color: black !important;
+    margin-top: 20pt;
+    page-break-after: avoid;
+  }
+
+  .markdown table {
+    border-collapse: collapse;
+    width: 100%;
+  }
+
+  .markdown th, .markdown td {
+    border: 1pt solid #ccc;
+    padding: 8pt;
   }
 }
