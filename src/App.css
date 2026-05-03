@@ -51,7 +51,7 @@
 /* View Toggle */
 .view-toggle {
   display: flex;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(58, 124, 168, 0.05);
   border-radius: 12px;
   padding: 4px;
   margin-bottom: 24px;
@@ -73,19 +73,19 @@
 .view-toggle button.active {
   background: var(--accent-brand);
   color: white;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(58, 124, 168, 0.2);
 }
 
 .api-input, .provider-select {
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.5);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 16px;
   color: var(--text-primary);
   font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.3s;
+  transition: all 0.3s;
 }
 
 .provider-select {
@@ -106,26 +106,26 @@
 }
 
 .record-btn {
-  background: var(--accent-brand);
+  background: linear-gradient(135deg, var(--accent-brand) 0%, var(--accent-hover) 100%);
   color: white;
   border: none;
   padding: 12px 32px;
   border-radius: 99px;
   font-size: 1.1rem;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 10px 20px rgba(58, 124, 168, 0.15);
 }
 
-.record-btn:hover {
-  background: var(--accent-hover);
-  transform: translateY(-2px);
+.record-btn:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 15px 30px rgba(58, 124, 168, 0.25);
 }
 
 .record-btn.active {
-  background: var(--error);
-  box-shadow: 0 4px 15px rgba(248, 113, 113, 0.4);
+  background: linear-gradient(135deg, var(--error) 0%, #ff6b6b 100%);
+  box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
 }
 
 .content-grid {
@@ -167,9 +167,9 @@
 }
 
 .icon-btn {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(58, 124, 168, 0.05);
   border: 1px solid var(--border);
-  color: var(--text-secondary);
+  color: var(--accent-brand);
   padding: 4px 10px;
   border-radius: 6px;
   cursor: pointer;
@@ -324,7 +324,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: #FFFFFF;
   border: 1px solid var(--border);
   border-radius: 12px;
   cursor: pointer;
@@ -332,9 +332,10 @@
 }
 
 .history-item:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: #F8FAFC;
   border-color: var(--accent-brand);
   transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .history-info {

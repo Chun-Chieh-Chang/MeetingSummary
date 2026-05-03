@@ -3,16 +3,16 @@
 }
 
 :root {
-  /* Design Tokens - Color Master Palette */
-  --bg-base: #0F172A; /* Slate 900 */
-  --surface-card: #1E293B; /* Slate 800 */
-  --text-primary: #F1F5F9; /* Slate 100 */
-  --text-secondary: #94A3B8; /* Slate 400 */
-  --accent-brand: #3B82F6; /* Royal Blue */
-  --accent-hover: #60A5FA; /* Sky Blue */
-  --success: #34D399; /* Emerald Light */
-  --error: #F87171; /* Red Light */
-  --border: #334155; /* Slate 700 */
+  /* Design Tokens - Refreshing Sea Salt Blue */
+  --bg-base: #F0F7FB;
+  --surface-card: #FFFFFF;
+  --text-primary: #1A3A5F;
+  --text-secondary: #5A7D9A;
+  --accent-brand: #3A7CA8;
+  --accent-hover: #73A8C2;
+  --success: #10B981;
+  --error: #EF4444;
+  --border: #B4D8E7;
 
   --font-main: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   
@@ -20,7 +20,7 @@
   line-height: 1.6;
   font-weight: 400;
 
-  color-scheme: dark;
+  color-scheme: light;
   background-color: var(--bg-base);
   color: var(--text-primary);
 
@@ -47,14 +47,14 @@ body {
   width: 100%;
 }
 
-/* Glassmorphism Utilities */
+/* Glassmorphism Utilities (Refined for Light Theme) */
 .glass-card {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 30px rgba(58, 124, 168, 0.08);
 }
 
 /* Animations */
