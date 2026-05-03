@@ -15,8 +15,9 @@ The rules and workflows for this wiki.
 
 ### [Concepts](concepts/)
 *   [speaker-diarization](concepts/speaker-diarization.md): Logic for identifying multiple speakers.
-*   [meeting-summarization](concepts/meeting-summarization.md): Core logic for extracting key points and tasks.
-*   [llm-wiki](concepts/llm-wiki.md): Compounding knowledge pattern.
+*   [meeting-summarization](concepts/meeting-summarization.md): Strategy for structured summaries.
+*   [history-persistence](concepts/history-persistence.md): Local storage and data management.
+*   [llm-wiki](concepts/llm-wiki.md): The project knowledge governance pattern.
 
 ### [Log](log.md)
 The timeline of this project's evolution.

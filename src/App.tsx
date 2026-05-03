@@ -3,10 +3,21 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import './App.css';
 
 
+interface MeetingRecord {
+  id: string;
+  date: string;
+  duration: number;
+  provider: string;
+  transcript: string;
+  summary: string;
+}
+
 const App: React.FC = () => {
   const [provider, setProvider] = useState<'gemini' | 'assemblyai' | 'deepgram'>('gemini');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [view, setView] = useState<'current' | 'history'>('current');
+  const [history, setHistory] = useState<MeetingRecord[]>([]);
   const [transcript, setTranscript] = useState<string>(`
 # 📘 軟體運作說明 (User Guide)
 
@@ -38,6 +49,42 @@ const App: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
 
+  // Load history on mount
+  React.useEffect(() => {
+    const savedHistory = localStorage.getItem('meeting_history');
+    if (savedHistory) {
+      setHistory(JSON.parse(savedHistory));
+    }
+  }, []);
+
+  const saveToHistory = (newTranscript: string, newSummary: string) => {
+    const newRecord: MeetingRecord = {
+      id: Date.now().toString(),
+      date: new Date().toLocaleString('zh-TW'),
+      duration,
+      provider,
+      transcript: newTranscript,
+      summary: newSummary
+    };
+    const updatedHistory = [newRecord, ...history];
+    setHistory(updatedHistory);
+    localStorage.setItem('meeting_history', JSON.stringify(updatedHistory));
+  };
+
+  const deleteHistoryItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedHistory = history.filter(item => item.id !== id);
+    setHistory(updatedHistory);
+    localStorage.setItem('meeting_history', JSON.stringify(updatedHistory));
+  };
+
+  const loadHistoryItem = (item: MeetingRecord) => {
+    setTranscript(item.transcript);
+    setSummary(item.summary);
+    setDuration(item.duration);
+    setProvider(item.provider as any);
+    setView('current');
+  };
 
   const startRecording = async () => {
     try {
@@ -163,6 +210,7 @@ const App: React.FC = () => {
       setTranscript(responseText);
       setSummary("Analysis Complete (Gemini).");
       setIsProcessing(false);
+      saveToHistory(responseText, "Analysis Complete (Gemini).");
     };
   };
 
@@ -181,6 +229,21 @@ const App: React.FC = () => {
 
       <main className="dashboard">
         <section className="controls glass-card">
+          <div className="view-toggle">
+            <button 
+              className={view === 'current' ? 'active' : ''} 
+              onClick={() => setView('current')}
+            >
+              Current
+            </button>
+            <button 
+              className={view === 'history' ? 'active' : ''} 
+              onClick={() => setView('history')}
+            >
+              History ({history.length})
+            </button>
+          </div>
+
           <div className="api-config">
             <select 
               value={provider} 
@@ -236,23 +299,48 @@ const App: React.FC = () => {
         </section>
 
         <div className="content-grid">
-          <section className="transcript-panel glass-card">
-            <h3>Transcript & Analysis</h3>
-            <div className="scroll-area">
-              {isProcessing && <div className="loading-spinner">Processing Audio...</div>}
-              {!transcript && !isProcessing && <p className="empty-state">No analysis yet...</p>}
-              <div className="summary-content markdown">
-                {transcript}
-              </div>
-            </div>
-          </section>
+          {view === 'current' ? (
+            <>
+              <section className="transcript-panel glass-card">
+                <h3>Transcript & Analysis</h3>
+                <div className="scroll-area">
+                  {isProcessing && <div className="loading-spinner">Processing Audio...</div>}
+                  {!transcript && !isProcessing && <p className="empty-state">No analysis yet...</p>}
+                  <div className="summary-content markdown">
+                    {transcript}
+                  </div>
+                </div>
+              </section>
 
-          <section className="summary-panel glass-card">
-            <h3>Status</h3>
-            <div className="summary-content">
-              {summary || <p className="empty-state">System ready.</p>}
-            </div>
-          </section>
+              <section className="summary-panel glass-card">
+                <h3>Status</h3>
+                <div className="summary-content">
+                  {summary || <p className="empty-state">System ready.</p>}
+                </div>
+              </section>
+            </>
+          ) : (
+            <section className="history-panel glass-card full-width">
+              <h3>Meeting History</h3>
+              <div className="scroll-area">
+                {history.length === 0 ? (
+                  <p className="empty-state">No saved meetings yet.</p>
+                ) : (
+                  <div className="history-list">
+                    {history.map(item => (
+                      <div key={item.id} className="history-item" onClick={() => loadHistoryItem(item)}>
+                        <div className="history-info">
+                          <span className="history-date">{item.date}</span>
+                          <span className="history-meta">{item.provider.toUpperCase()} • {formatTime(item.duration)}</span>
+                        </div>
+                        <button className="delete-btn" onClick={(e) => deleteHistoryItem(item.id, e)}>×</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
         </div>
       </main>
 
