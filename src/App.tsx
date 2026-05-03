@@ -2,11 +2,6 @@ import React, { useState, useRef } from 'react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import './App.css';
 
-interface TranscriptEntry {
-  speaker: string;
-  text: string;
-  timestamp: string;
-}
 
 const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -36,9 +31,7 @@ const App: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
 
-  // Speaker Diarization Mock (since true diarization requires backend processing)
-  const speakers = ["Speaker A", "Speaker B", "Speaker C"];
-  
+
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -65,9 +58,6 @@ const App: React.FC = () => {
       timerRef.current = window.setInterval(() => {
         setDuration((prev) => prev + 1);
       }, 1000);
-
-      // Simulated Live Diarization for UI Feedback
-      addMockTranscript();
     } catch (err) {
       console.error("Microphone access denied:", err);
       alert("Please allow microphone access to record meetings.");
@@ -85,25 +75,6 @@ const App: React.FC = () => {
     setIsRecording(false);
   };
 
-  const addMockTranscript = () => {
-    if (!isRecording) return;
-    
-    // This is where a real STT/Diarization engine would push updates
-    const mockInterval = setInterval(() => {
-      if (!isRecording) {
-        clearInterval(mockInterval);
-        return;
-      }
-      
-      const newEntry: TranscriptEntry = {
-        speaker: speakers[Math.floor(Math.random() * speakers.length)],
-        text: "Thinking about the next steps for our product development...",
-        timestamp: new Date().toLocaleTimeString(),
-      };
-      
-      setTranscript((prev) => [...prev, newEntry]);
-    }, 5000);
-  };
 
   const processAudio = async (blob: Blob) => {
     if (!apiKey) {
