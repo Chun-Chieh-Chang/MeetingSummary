@@ -1,0 +1,240 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  max-height: 100vh;
+  padding: 24px;
+  gap: 24px;
+  overflow: hidden;
+}
+
+.app-header {
+  text-align: left;
+}
+
+.app-header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-brand) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.app-header p {
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+  min-height: 0; /* 重要：允許 flex 項目縮小以啟用滾動 */
+  overflow: hidden;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  gap: 20px;
+}
+
+.api-config {
+  flex: 1;
+  max-width: 300px;
+}
+
+.api-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.api-input:focus {
+  border-color: var(--accent-brand);
+}
+
+.recording-status {
+  display: flex;
+  align-items: center;
+  font-size: 1.5rem;
+  font-family: 'Monaco', monospace;
+  font-weight: 600;
+}
+
+.record-btn {
+  background: var(--accent-brand);
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 99px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.record-btn:hover {
+  background: var(--accent-hover);
+  transform: translateY(-2px);
+}
+
+.record-btn.active {
+  background: var(--error);
+  box-shadow: 0 4px 15px rgba(248, 113, 113, 0.4);
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 24px;
+  flex: 1;
+  min-height: 0; /* 重要：允許 grid 項目縮小 */
+  overflow: hidden;
+}
+
+.transcript-panel, .summary-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  text-align: left;
+  min-height: 0; /* 重要 */
+}
+
+.transcript-panel h3, .summary-panel h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.25rem;
+  color: var(--accent-brand);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 12px;
+}
+
+.scroll-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scroll-area::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.scroll-area::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+  background-clip: padding-box;
+}
+
+.transcript-entry {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  border-left: 4px solid var(--accent-brand);
+}
+
+.speaker-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--accent-brand);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.speech-text {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.timestamp {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 8px;
+  text-align: right;
+}
+
+.summary-content {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 1.05rem;
+  white-space: pre-wrap;
+}
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+  color: var(--accent-brand);
+  font-weight: 600;
+  gap: 12px;
+}
+
+.loading-spinner::after {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--accent-brand);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.markdown {
+  line-height: 1.8;
+}
+
+.markdown h1, .markdown h2, .markdown h3 {
+  color: var(--accent-brand);
+  margin-top: 24px;
+}
+
+.markdown ul, .markdown ol {
+  padding-left: 20px;
+}
+
+.markdown code {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.app-footer {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 1024px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+}
