@@ -133,10 +133,13 @@ const App: React.FC = () => {
   const [apiKey, setApiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
   const [assemblyKey, setAssemblyKey] = useState(import.meta.env.VITE_ASSEMBLYAI_API_KEY || '');
   const [deepgramKey, setDeepgramKey] = useState(import.meta.env.VITE_DEEPGRAM_API_KEY || '');
+  const [audioSource, setAudioSource] = useState<'record' | 'upload'>('record');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load history on mount
   React.useEffect(() => {
@@ -177,6 +180,37 @@ const App: React.FC = () => {
     setView('current');
   };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    // 檔案大小限制：100MB (Gemini API 限制)
+    const MAX_SIZE = 100 * 1024 * 1024; // 100MB
+    if (file.size > MAX_SIZE) {
+      alert(`❌ 檔案過大！\n\n最大允許大小：100 MB\n您的檔案大小：${(file.size / 1024 / 1024).toFixed(2)} MB\n\n請選擇較小的檔案或使用檔案上傳 API。`);
+      return;
+    }
+    
+    // 檢查檔案類型
+    const audioTypes = ['audio/mpeg', 'audio/wav', 'audio/webm', 'audio/mp3', 'audio/mp4', 'audio/ogg', 'audio/flac'];
+    const videoTypes = ['video/mp4', 'video/webm', 'video/avi'];
+    
+    if (!audioTypes.includes(file.type) && !videoTypes.includes(file.type)) {
+      alert(`⚠️ 不支援的檔案格式！\n\n支援的格式：\n• 音訊：MP3, WAV, WebM, MP4, OGG, FLAC\n• 影片：MP4, WebM, AVI\n\n您的檔案類型：${file.type}`);
+      return;
+    }
+    
+    setSelectedFile(file);
+    setAudioSource('upload');
+    setTranscript(`已選擇檔案：${file.name}\n大小：${(file.size / 1024 / 1024).toFixed(2)} MB\n類型：${file.type}\n\n點擊「分析檔案」開始處理。`);
+  };
+
+  const clearFileSelection = () => {
+    setSelectedFile(null);
+    setAudioSource('record');
+    setTranscript('');
+  };
+
   const exportToMarkdown = () => {
     if (!transcript) return;
     const blob = new Blob([transcript], { type: 'text/markdown' });
@@ -214,7 +248,9 @@ const App: React.FC = () => {
       };
 
       mediaRecorder.onstop = () => {
-        processAudio(new Blob(audioChunksRef.current, { type: 'audio/webm' }));
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        saveAudioToFile(blob, `meeting_${Date.now()}.webm`);
+        processAudio(blob);
       };
 
       mediaRecorder.start();
@@ -252,6 +288,41 @@ const App: React.FC = () => {
     setIsRecording(false);
   };
 
+  const saveAudioToFile = async (blob: Blob, filename: string) => {
+    try {
+      // 嘗試使用 File System Access API (現代瀏覽器支援)
+      // @ts-ignore
+      if (window.showSaveFilePicker) {
+        // @ts-ignore
+        const handle = await window.showSaveFilePicker({
+          suggestedName: filename,
+          types: [{
+            description: 'WebM Audio',
+            accept: { 'audio/webm': ['.webm'] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        console.log('Audio saved to:', handle.name);
+      } else {
+        // 傳統方式：下載檔案
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        console.log('Audio downloaded:', filename);
+      }
+    } catch (err: any) {
+      console.warn('Failed to save audio file:', err);
+      // 使用者取消操作或其他錯誤，不中斷流程
+    }
+  };
+
   const getGeminiModelInfo = (modelId: string) => {
     return GEMINI_MODELS.find(m => m.id === modelId);
   };
@@ -282,15 +353,50 @@ const App: React.FC = () => {
     }
   };
 
+  const processFileAudio = async (file: File) => {
+    const currentKey = provider === 'gemini' ? apiKey : (provider === 'assemblyai' ? assemblyKey : deepgramKey);
+    
+    if (!currentKey) {
+      alert(`Please provide an API Key for ${provider}.`);
+      return;
+    }
+
+    // 檔案大小限制檢查
+    const MAX_SIZE = 100 * 1024 * 1024; // 100MB
+    if (file.size > MAX_SIZE) {
+      alert(`❌ 檔案過大！\n\n最大允許大小：100 MB\n您的檔案大小：${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      return;
+    }
+
+    setIsProcessing(true);
+    setSummary(`${provider.toUpperCase()} is analyzing your file...`);
+    
+    try {
+      if (provider === 'gemini') {
+        await processWithFile(file, currentKey);
+      } else {
+        // Placeholder for future implementation of other providers
+        setSummary(`${provider.toUpperCase()} integration is reserved. Currently implementing...`);
+        setTimeout(() => setIsProcessing(false), 2000);
+      }
+    } catch (err: any) {
+      console.error(`${provider.toUpperCase()} Error:`, err);
+      setSummary(`❌ 處理錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和檔案格式。`);
+      setIsProcessing(false);
+    }
+  };
+
   const processWithGemini = async (blob: Blob, key: string) => {
     const genAI = new GoogleGenerativeAI(key);
     const model = genAI.getGenerativeModel({ model: geminiModel });
 
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = async () => {
-      const base64Data = (reader.result as string).split(',')[1];
-      const prompt = `
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      
+      reader.onloadend = async () => {
+        const base64Data = (reader.result as string).split(',')[1];
+        const prompt = `
         ## 角色設定
         你是一位專業的行政助理與戰略分析師。請仔細聽取這段會議音訊，並依照以下結構進行分析與記錄。
         請使用 **繁體中文 (zh-TW)** 進行輸出，並保持專業、簡潔的語氣。
@@ -338,6 +444,116 @@ const App: React.FC = () => {
       setIsProcessing(false);
       saveToHistory(responseText, "Analysis Complete (Gemini).");
     };
+    
+    reader.onerror = () => {
+      setSummary("❌ 讀取音訊失敗！\n\n請檢查錄音是否正常完成。");
+      setIsProcessing(false);
+    };
+    
+  } catch (err: any) {
+    console.error("Gemini API Error:", err);
+    
+    // 檢查是否為 RPM 限制錯誤
+    if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
+      setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+    } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
+      setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
+    } else {
+      setSummary(`❌ Gemini API 錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和錄音檔案。`);
+    }
+    setIsProcessing(false);
+  }
+  };
+
+  const processWithFile = async (file: File, key: string) => {
+    const genAI = new GoogleGenerativeAI(key);
+    const model = genAI.getGenerativeModel({ model: geminiModel });
+
+    try {
+      // 讀取檔案
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      
+      reader.onloadend = async () => {
+        const base64Data = (reader.result as string).split(',')[1];
+        
+        // 檢查 Base64 大小 (Gemini API 限制：100MB)
+        const maxSize = 100 * 1024 * 1024;
+        const base64Size = base64Data.length * 3 / 4;
+        
+        if (base64Size > maxSize) {
+          setSummary(`❌ 檔案過大！\n\n上傳大小：${(base64Size / 1024 / 1024).toFixed(2)} MB\n最大限制：100 MB\n\n請選擇較小的檔案。`);
+          setIsProcessing(false);
+          return;
+        }
+
+        const prompt = `
+          ## 角色設定
+          你是一位專業的行政助理與戰略分析師。請仔細聽取這段會議音訊，並依照以下結構進行分析與記錄。
+          請使用 **繁體中文 (zh-TW)** 進行輸出，並保持專業、簡潔的語氣。
+
+          ## 輸出規範 (Markdown 格式)
+
+          ### 1. 執行摘要 (Executive Summary)
+          - 用 3-5 句話概括會議的核心目的與最終結論。
+
+          ### 2. 角色標註逐字稿 (Diarized Transcript)
+          - 標註發言者 (例如：發言者 1, 發言者 2)。
+          - 如果能從對話中得知姓名，請直接使用姓名。
+          - 紀錄關鍵對話內容，省略贅字，保持語意流暢。
+
+          ### 3. 議題深度分析 (Topic Analysis)
+          - 條列會議中討論的所有主要議題。
+          - 簡述各議題的討論進度或不同觀點。
+
+          ### 4. 決策紀錄與待辦事項 (Decisions & Action Items)
+          | 類型 | 內容描述 | 負責人 | 期限/備註 |
+          | :--- | :--- | :--- | :--- |
+          | [決策/待辦] | 具體描述 | 若提及請標註 | 若提及請標註 |
+
+          ### 5. 會議氛圍與建議 (Tone & Insights)
+          - 簡述會議氛圍（如：積極、嚴肅、分歧）。
+          - 提供 1-2 個後續跟進的專業建議。
+
+          ---
+          請確保排版優雅，適合在高階主管會議後直接閱讀。
+        `;
+
+        const result = await model.generateContent([
+          prompt,
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: file.type
+            }
+          }
+        ]);
+
+        const responseText = result.response.text();
+        setTranscript(responseText);
+        setSummary(`Analysis Complete (Gemini). File: ${file.name}`);
+        setIsProcessing(false);
+        saveToHistory(responseText, `Analysis Complete (Gemini). File: ${file.name}`);
+      };
+      
+      reader.onerror = () => {
+        setSummary("❌ 讀取檔案失敗！\n\n請檢查檔案是否損毀或格式是否正確。");
+        setIsProcessing(false);
+      };
+      
+    } catch (err: any) {
+      console.error("Gemini API Error:", err);
+      
+      // 檢查是否為 RPM 限制錯誤
+      if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
+        setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+      } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
+        setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
+      } else {
+        setSummary(`❌ Gemini API 錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和檔案格式。`);
+      }
+      setIsProcessing(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -460,6 +676,93 @@ const App: React.FC = () => {
                 className="api-input"
               />
             )}
+            
+            {/* Audio Source Selector */}
+            <div className="audio-source-selector" style={{ 
+              display: 'flex', 
+              gap: '8px', 
+              marginTop: '12px',
+              marginBottom: '12px'
+            }}>
+              <button 
+                type="button"
+                className={`source-btn ${audioSource === 'record' ? 'active' : ''}`}
+                onClick={() => {
+                  setAudioSource('record');
+                  setSelectedFile(null);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  background: audioSource === 'record' ? 'var(--accent-brand)' : 'rgba(58, 124, 168, 0.05)',
+                  color: audioSource === 'record' ? 'white' : 'var(--text-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s'
+                }}
+              >
+                🎤 麥克風錄音
+              </button>
+              <button 
+                type="button"
+                className={`source-btn ${audioSource === 'upload' ? 'active' : ''}`}
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  background: audioSource === 'upload' ? 'var(--accent-brand)' : 'rgba(58, 124, 168, 0.05)',
+                  color: audioSource === 'upload' ? 'white' : 'var(--text-secondary)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s'
+                }}
+              >
+                📂 上傳檔案
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef}
+                accept="audio/*,video/*"
+                style={{ display: 'none' }}
+                onChange={handleFileSelect}
+              />
+            </div>
+
+            {/* File Selection Display */}
+            {audioSource === 'upload' && selectedFile && (
+              <div className="file-info" style={{ 
+                background: 'rgba(16, 185, 129, 0.1)',
+                border: '1px solid var(--success)',
+                borderRadius: '8px',
+                padding: '12px',
+                marginBottom: '12px',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <strong style={{ color: 'var(--success)' }}>✅ {selectedFile.name}</strong>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • {selectedFile.type}
+                  </div>
+                </div>
+                <button 
+                  onClick={clearFileSelection}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    color: '#EF4444',
+                    border: 'none',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="recording-status">
@@ -469,10 +772,18 @@ const App: React.FC = () => {
           
           <button 
             className={`record-btn ${isRecording ? 'active' : ''}`}
-            onClick={isRecording ? stopRecording : startRecording}
+            onClick={isRecording ? stopRecording : () => {
+              if (audioSource === 'record') {
+                startRecording();
+              } else if (audioSource === 'upload' && selectedFile) {
+                processFileAudio(selectedFile);
+              } else {
+                alert('請選擇音訊來源並上傳檔案');
+              }
+            }}
             disabled={isProcessing}
           >
-            {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : 'Start Meeting'}
+            {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : audioSource === 'record' ? 'Start Meeting' : '分析檔案'}
           </button>
         </section>
 
