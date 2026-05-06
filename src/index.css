@@ -47,6 +47,16 @@ body {
   width: 100%;
 }
 
+@media (max-width: 768px) {
+  body {
+    align-items: flex-start;
+  }
+
+  #root {
+    padding: 0;
+  }
+}
+
 /* Glassmorphism Utilities (Refined for Light Theme) */
 .glass-card {
   background: rgba(255, 255, 255, 0.85);

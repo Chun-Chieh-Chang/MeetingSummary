@@ -375,8 +375,80 @@
 }
 
 @media (max-width: 768px) {
+  .app-container {
+    padding: 12px;
+    gap: 12px;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .app-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .app-header p {
+    font-size: 0.85rem;
+  }
+
+  .dashboard {
+    overflow: visible;
+  }
+
+  /* Controls: 垂直排列 */
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+    gap: 12px;
+  }
+
+  .api-config {
+    max-width: 100%;
+  }
+
+  /* 錄音狀態與按鈕並排 */
+  .recording-status {
+    font-size: 1.2rem;
+    justify-content: center;
+  }
+
+  .record-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 1rem;
+  }
+
+  /* Content grid: 單欄 */
   .content-grid {
     grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  /* Panel 高度改為固定，讓手機可以滾動 */
+  .transcript-panel, .summary-panel {
+    min-height: 300px;
+    max-height: 60vh;
+  }
+
+  .summary-panel {
+    max-height: 200px;
+  }
+
+  /* 音訊來源按鈕 */
+  .audio-source-selector {
+    flex-direction: row !important;
+  }
+
+  /* History panel */
+  .history-panel {
+    min-height: 300px;
+    max-height: 70vh;
+  }
+
+  /* Footer */
+  .app-footer {
+    padding-bottom: 16px;
   }
 }
 
