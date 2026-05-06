@@ -89,7 +89,6 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [view, setView] = useState<'current' | 'history'>('current');
-  const [history, setHistory] = useState<MeetingRecord[]>([]);
   const [transcript, setTranscript] = useState<string>(`
 # 📘 軟體運作說明 (User Guide)
 
@@ -154,14 +153,15 @@ const App: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Load history on mount
-  React.useEffect(() => {
-    const savedHistory = localStorage.getItem('meeting_history');
-    if (savedHistory) {
-      setHistory(JSON.parse(savedHistory));
+  const [history, setHistory] = useState<MeetingRecord[]>(() => {
+    try {
+      const savedHistory = localStorage.getItem('meeting_history');
+      return savedHistory ? JSON.parse(savedHistory) : [];
+    } catch (error) {
+      console.error('Failed to load history:', error);
+      return [];
     }
-  }, []);
+  });
 
   const saveToHistory = (newTranscript: string, newSummary: string) => {
     const newRecord: MeetingRecord = {
@@ -189,7 +189,7 @@ const App: React.FC = () => {
     setTranscript(item.transcript);
     setSummary(item.summary);
     setDuration(item.duration);
-    setProvider(item.provider as any);
+    setProvider(item.provider as 'gemini' | 'assemblyai' | 'deepgram');
     setGeminiModel(item.modelId);
     setView('current');
   };
@@ -276,15 +276,19 @@ const App: React.FC = () => {
       timerRef.current = window.setInterval(() => {
         setDuration((prev) => prev + 1);
       }, 1000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Microphone Access Error:", err);
       
-      if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        alert("❌ 找不到麥克風設備。請檢查您的麥克風是否已插入，並在 Windows 設定中開啟麥克風存取權限。");
-      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        alert("❌ 麥克風權限被拒絕。請點擊網址列左側的鎖頭圖示，並選擇『允許使用麥克風』。");
+      if (err instanceof Error) {
+        if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          alert("❌ 找不到麥克風設備。請檢查您的麥克風是否已插入，並在 Windows 設定中開啟麥克風存取權限。");
+        } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          alert("❌ 麥克風權限被拒絕。請點擊網址列左側的鎖頭圖示，並選擇『允許使用麥克風』。");
+        } else {
+          alert(`❌ 錄音啟動失敗: ${err.message}`);
+        }
       } else {
-        alert(`❌ 錄音啟動失敗: ${err.message}`);
+        alert("❌ 錄音啟動失敗: 未知錯誤");
       }
       
       setIsRecording(false);
@@ -305,9 +309,9 @@ const App: React.FC = () => {
   const saveAudioToFile = async (blob: Blob, filename: string) => {
     try {
       // 嘗試使用 File System Access API (現代瀏覽器支援)
-      // @ts-ignore
+      // @ts-expect-error - showSaveFilePicker is not yet in TypeScript definitions
       if (window.showSaveFilePicker) {
-        // @ts-ignore
+        // @ts-expect-error - showSaveFilePicker is not yet in TypeScript definitions
         const handle = await window.showSaveFilePicker({
           suggestedName: filename,
           types: [{
@@ -331,7 +335,7 @@ const App: React.FC = () => {
         URL.revokeObjectURL(url);
         console.log('Audio downloaded:', filename);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('Failed to save audio file:', err);
       // 使用者取消操作或其他錯誤，不中斷流程
     }
@@ -393,9 +397,10 @@ const App: React.FC = () => {
         setSummary(`${provider.toUpperCase()} integration is reserved. Currently implementing...`);
         setTimeout(() => setIsProcessing(false), 2000);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(`${provider.toUpperCase()} Error:`, err);
-      setSummary(`❌ 處理錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和檔案格式。`);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setSummary(`❌ 處理錯誤：\n\n${errorMessage}\n\n請檢查您的 API Key 和檔案格式。`);
       setIsProcessing(false);
     }
   };
@@ -464,16 +469,20 @@ const App: React.FC = () => {
       setIsProcessing(false);
     };
     
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Gemini API Error:", err);
     
     // 檢查是否為 RPM 限制錯誤
-    if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
-      setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
-    } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
-      setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
+    if (err instanceof Error) {
+      if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
+        setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+      } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
+        setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
+      } else {
+        setSummary(`❌ Gemini API 錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和錄音檔案。`);
+      }
     } else {
-      setSummary(`❌ Gemini API 錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和錄音檔案。`);
+      setSummary(`❌ Gemini API 錯誤：\n\n未知錯誤\n\n請檢查您的 API Key 和錄音檔案。`);
     }
     setIsProcessing(false);
   }
@@ -555,16 +564,20 @@ const App: React.FC = () => {
         setIsProcessing(false);
       };
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Gemini API Error:", err);
       
       // 檢查是否為 RPM 限制錯誤
-      if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
-        setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
-      } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
-        setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
+      if (err instanceof Error) {
+        if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
+          setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+        } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
+          setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
+        } else {
+          setSummary(`❌ Gemini API 錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和檔案格式。`);
+        }
       } else {
-        setSummary(`❌ Gemini API 錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和檔案格式。`);
+        setSummary(`❌ Gemini API 錯誤：\n\n未知錯誤\n\n請檢查您的 API Key 和檔案格式。`);
       }
       setIsProcessing(false);
     }
@@ -603,7 +616,7 @@ const App: React.FC = () => {
           <div className="api-config">
             <select 
               value={provider} 
-              onChange={(e) => setProvider(e.target.value as any)}
+              onChange={(e) => setProvider(e.target.value as 'gemini' | 'assemblyai' | 'deepgram')}
               className="provider-select"
             >
               <option value="gemini">Google Gemini</option>
