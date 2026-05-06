@@ -1,0 +1,13 @@
+{
+  "name": "PWA Build Check",
+  "version": "1.0.0",
+  "description": "Check PWA configuration before build",
+  "when": {
+    "type": "preTaskExecution",
+    "patterns": ["**/vite.config.ts", "**/manifest.webmanifest", "**/.gitignore"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Before building PWA, verify:\n1. Check if public/icons/ directory exists and contains icons-192.png and icons-512.png\n2. Check if manifest.webmanifest has correct icon paths (should include /icons/ subdirectory)\n3. Check if vite.config.ts PWA config has correct icon paths\n4. Check if .gitignore excludes /public/icons/ (should be commented out for GitHub Pages)\n\nIf any check fails, report the specific issue and suggest fix."
+  }
+}
