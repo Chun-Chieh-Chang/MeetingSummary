@@ -32,29 +32,14 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
   background-color: var(--bg-base);
 }
 
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
   width: 100%;
-}
-
-@media (max-width: 768px) {
-  body {
-    align-items: flex-start;
-  }
-
-  #root {
-    padding: 0;
-  }
+  height: 100vh;
 }
 
 /* Glassmorphism Utilities (Refined for Light Theme) */

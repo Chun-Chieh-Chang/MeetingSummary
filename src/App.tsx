@@ -591,286 +591,138 @@ const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      <header className="app-header">
-        <h1>🎙️ MeetingSummary Pro</h1>
-        <p>Premium Agent-Driven Transcription & Synthesis</p>
-      </header>
+      <aside className="sidebar glass-card">
+        <header className="app-header">
+          <h1>🎙️ MeetingSummary Pro</h1>
+          <p>Premium Agent-Driven Transcription & Synthesis</p>
+        </header>
 
-      <main className="dashboard">
-        <section className="controls glass-card">
-          <div className="view-toggle">
-            <button 
-              className={view === 'current' ? 'active' : ''} 
-              onClick={() => setView('current')}
-            >
-              Current
-            </button>
-            <button 
-              className={view === 'history' ? 'active' : ''} 
-              onClick={() => setView('history')}
-            >
-              History ({history.length})
-            </button>
-          </div>
+        <div className="view-toggle">
+          <button className={view === 'current' ? 'active' : ''} onClick={() => setView('current')}>Current</button>
+          <button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>History ({history.length})</button>
+        </div>
 
-          <div className="api-config">
-            <select 
-              value={provider} 
-              onChange={(e) => setProvider(e.target.value as 'gemini' | 'assemblyai' | 'deepgram')}
-              className="provider-select"
-            >
-              <option value="gemini">Google Gemini</option>
-              <option value="assemblyai">AssemblyAI</option>
-              <option value="deepgram">Deepgram</option>
-            </select>
+        <div className="api-config">
+          <select value={provider} onChange={(e) => setProvider(e.target.value as 'gemini' | 'assemblyai' | 'deepgram')} className="provider-select">
+            <option value="gemini">Google Gemini</option>
+            <option value="assemblyai">AssemblyAI</option>
+            <option value="deepgram">Deepgram</option>
+          </select>
 
-            {provider === 'gemini' && (
-              <>
-                <select
-                  value={geminiModel}
-                  onChange={(e) => setGeminiModel(e.target.value)}
-                  className="api-input"
-                  style={{ marginBottom: '12px' }}
-                >
-                  {GEMINI_MODELS.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name} {model.status === 'preview' ? '(Preview)' : ''}
-                    </option>
-                  ))}
-                </select>
-                
-                <div className="model-info" style={{ 
-                  background: 'rgba(58, 124, 168, 0.05)',
-                  padding: '12px',
-                  borderRadius: '8px',
-                  fontSize: '0.85rem',
-                  marginBottom: '12px'
-                }}>
-                  {(() => {
-                    const modelInfo = getGeminiModelInfo(geminiModel);
-                    return (
-                      <>
-                        <strong>{modelInfo?.name}</strong>
-                        <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>
-                          {modelInfo?.description}
-                        </p>
-                        <div style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: 'repeat(2, 1fr)', 
-                          gap: '4px',
-                          marginTop: '8px'
-                        }}>
-                          {modelInfo?.rpm && modelInfo.rpm > 0 && (
-                            <span>⚡ {modelInfo.rpm} RPM</span>
-                          )}
-                          {modelInfo?.rpd && modelInfo.rpd > 0 && (
-                            <span>📅 {modelInfo.rpd} RPD</span>
-                          )}
-                          {modelInfo?.tpm && modelInfo.tpm > 0 && (
-                            <span>📊 {(modelInfo.tpm / 1000)}K TPM</span>
-                          )}
-                          <span>🧠 {modelInfo?.contextWindow}</span>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-
-                <input 
-                  type="password" 
-                  placeholder="Enter Gemini API Key" 
-                  value={apiKey} 
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="api-input"
-                />
-              </>
-            )}
-            {provider === 'assemblyai' && (
-              <input 
-                type="password" 
-                placeholder="Enter AssemblyAI API Key" 
-                value={assemblyKey} 
-                onChange={(e) => setAssemblyKey(e.target.value)}
-                className="api-input"
-              />
-            )}
-            {provider === 'deepgram' && (
-              <input 
-                type="password" 
-                placeholder="Enter Deepgram API Key" 
-                value={deepgramKey} 
-                onChange={(e) => setDeepgramKey(e.target.value)}
-                className="api-input"
-              />
-            )}
-            
-            {/* Audio Source Selector */}
-            <div className="audio-source-selector" style={{ 
-              display: 'flex', 
-              gap: '8px', 
-              marginTop: '12px',
-              marginBottom: '12px'
-            }}>
-              <button 
-                type="button"
-                className={`source-btn ${audioSource === 'record' ? 'active' : ''}`}
-                onClick={() => {
-                  setAudioSource('record');
-                  setSelectedFile(null);
-                }}
-                style={{
-                  flex: 1,
-                  padding: '8px',
-                  background: audioSource === 'record' ? 'var(--accent-brand)' : 'rgba(58, 124, 168, 0.05)',
-                  color: audioSource === 'record' ? 'white' : 'var(--text-secondary)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s'
-                }}
-              >
-                🎤 麥克風錄音
-              </button>
-              <button 
-                type="button"
-                className={`source-btn ${audioSource === 'upload' ? 'active' : ''}`}
-                onClick={() => fileInputRef.current?.click()}
-                style={{
-                  flex: 1,
-                  padding: '8px',
-                  background: audioSource === 'upload' ? 'var(--accent-brand)' : 'rgba(58, 124, 168, 0.05)',
-                  color: audioSource === 'upload' ? 'white' : 'var(--text-secondary)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s'
-                }}
-              >
-                {selectedFile ? 'Change File' : 'Upload File'}
-              </button>
-              <input 
-                type="file" 
-                ref={fileInputRef}
-                accept="audio/*,video/*"
-                style={{ display: 'none' }}
-                onChange={handleFileSelect}
-              />
-            </div>
-
-            {/* File Selection Display */}
-            {audioSource === 'upload' && selectedFile && (
-              <div className="file-info" style={{ 
-                background: 'rgba(16, 185, 129, 0.1)',
-                border: '1px solid var(--success)',
-                borderRadius: '8px',
-                padding: '12px',
-                marginBottom: '12px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <div>
-                  <strong style={{ color: 'var(--success)' }}>✅ {selectedFile.name}</strong>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB • {selectedFile.type}
-                  </div>
-                </div>
-                <button 
-                  onClick={clearFileSelection}
-                  style={{
-                    background: 'rgba(239, 68, 68, 0.1)',
-                    color: '#EF4444',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '4px 8px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  ×
-                </button>
+          {provider === 'gemini' && (
+            <>
+              <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)} className="api-input">
+                {GEMINI_MODELS.map((model) => (
+                  <option key={model.id} value={model.id}>{model.name} {model.status === 'preview' ? '(Preview)' : ''}</option>
+                ))}
+              </select>
+              <div className="model-info">
+                {(() => {
+                  const modelInfo = getGeminiModelInfo(geminiModel);
+                  return (
+                    <>
+                      <strong>{modelInfo?.name}</strong>
+                      <p>{modelInfo?.description}</p>
+                      <div className="model-stats">
+                        {modelInfo?.rpm && modelInfo.rpm > 0 && <span>⚡ {modelInfo.rpm} RPM</span>}
+                        {modelInfo?.rpd && modelInfo.rpd > 0 && <span>📅 {modelInfo.rpd} RPD</span>}
+                        {modelInfo?.tpm && modelInfo.tpm > 0 && <span>📊 {modelInfo.tpm / 1000}K TPM</span>}
+                        <span>🧠 {modelInfo?.contextWindow}</span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
-            )}
+              <input type="password" placeholder="Enter Gemini API Key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="api-input" />
+            </>
+          )}
+          {provider === 'assemblyai' && (
+            <input type="password" placeholder="Enter AssemblyAI API Key" value={assemblyKey} onChange={(e) => setAssemblyKey(e.target.value)} className="api-input" />
+          )}
+          {provider === 'deepgram' && (
+            <input type="password" placeholder="Enter Deepgram API Key" value={deepgramKey} onChange={(e) => setDeepgramKey(e.target.value)} className="api-input" />
+          )}
+
+          <div className="audio-source-selector">
+            <button type="button" className={`source-btn ${audioSource === 'record' ? 'active' : ''}`} onClick={() => { setAudioSource('record'); setSelectedFile(null); }}>🎤 麥克風錄音</button>
+            <button type="button" className={`source-btn ${audioSource === 'upload' ? 'active' : ''}`} onClick={() => fileInputRef.current?.click()}>{selectedFile ? 'Change File' : '📂 Upload File'}</button>
+            <input type="file" ref={fileInputRef} accept="audio/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
           </div>
 
+          {audioSource === 'upload' && selectedFile && (
+            <div className="file-info">
+              <div>
+                <strong>✅ {selectedFile.name}</strong>
+                <div className="file-meta">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB • {selectedFile.type}</div>
+              </div>
+              <button className="file-clear-btn" onClick={clearFileSelection}>×</button>
+            </div>
+          )}
+        </div>
+
+        <div className="record-controls">
           <div className="recording-status">
             {isRecording && <span className="recording-indicator"></span>}
             <span className="timer">{formatTime(duration)}</span>
           </div>
-          
-          <button 
+          <button
             className={`record-btn ${isRecording ? 'active' : ''}`}
             onClick={isRecording ? stopRecording : () => {
-              if (audioSource === 'record') {
-                startRecording();
-              } else if (audioSource === 'upload' && selectedFile) {
-                processFileAudio(selectedFile);
-              } else {
-                alert('請選擇音訊來源並上傳檔案');
-              }
+              if (audioSource === 'record') startRecording();
+              else if (audioSource === 'upload' && selectedFile) processFileAudio(selectedFile);
+              else alert('請選擇音訊來源並上傳檔案');
             }}
             disabled={isProcessing}
           >
             {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : audioSource === 'record' ? 'Start Recording' : selectedFile ? 'Start Analysis' : 'Select File'}
           </button>
-        </section>
-
-        <div className="content-grid">
-          {view === 'current' ? (
-            <>
-              <section className="transcript-panel glass-card">
-                <div className="panel-header">
-                  <h3>Transcript & Analysis</h3>
-                  <div className="export-actions">
-                    <button onClick={exportToMarkdown} title="Export Markdown" className="icon-btn">📄 MD</button>
-                    <button onClick={exportToPDF} title="Print PDF" className="icon-btn">🖨️ PDF</button>
-                  </div>
-                </div>
-                <div className="scroll-area">
-                  {isProcessing && <div className="loading-spinner">Processing Audio...</div>}
-                  {!transcript && !isProcessing && <p className="empty-state">No analysis yet...</p>}
-                  <div className="summary-content markdown">
-                    {transcript}
-                  </div>
-                </div>
-              </section>
-
-              <section className="summary-panel glass-card">
-                <h3>Status</h3>
-                <div className="summary-content">
-                  {summary || <p className="empty-state">System ready.</p>}
-                </div>
-              </section>
-            </>
-          ) : (
-            <section className="history-panel glass-card full-width">
-              <h3>Meeting History</h3>
-              <div className="scroll-area">
-                {history.length === 0 ? (
-                  <p className="empty-state">No saved meetings yet.</p>
-                ) : (
-                  <div className="history-list">
-                    {history.map(item => (
-                      <div key={item.id} className="history-item" onClick={() => loadHistoryItem(item)}>
-                        <div className="history-info">
-                          <span className="history-date">{item.date}</span>
-                          <span className="history-meta">
-                            {item.provider.toUpperCase()} • {item.modelId} • {formatTime(item.duration)}
-                          </span>
-                        </div>
-                        <button className="delete-btn" onClick={(e) => deleteHistoryItem(item.id, e)}>×</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
+          <div className="status-inline">{summary}</div>
         </div>
-      </main>
 
-      <footer className="app-footer">
-        <p>© 2026 MeetingSummary - Powered by Antigravity AI</p>
-      </footer>
+        <footer className="app-footer">
+          <p>© 2026 MeetingSummary - Powered by Antigravity AI</p>
+        </footer>
+      </aside>
+
+      <main className="main-content">
+        {view === 'current' ? (
+          <section className="transcript-panel glass-card">
+            <div className="panel-header">
+              <h3>Transcript & Analysis</h3>
+              <div className="export-actions">
+                <button onClick={exportToMarkdown} title="Export Markdown" className="icon-btn">📄 MD</button>
+                <button onClick={exportToPDF} title="Print PDF" className="icon-btn">🖨️ PDF</button>
+              </div>
+            </div>
+            <div className="scroll-area">
+              {isProcessing && <div className="loading-spinner">Processing Audio...</div>}
+              {!transcript && !isProcessing && <p className="empty-state">No analysis yet...</p>}
+              <div className="summary-content markdown">{transcript}</div>
+            </div>
+          </section>
+        ) : (
+          <section className="history-panel glass-card">
+            <h3>Meeting History</h3>
+            <div className="scroll-area">
+              {history.length === 0 ? (
+                <p className="empty-state">No saved meetings yet.</p>
+              ) : (
+                <div className="history-list">
+                  {history.map(item => (
+                    <div key={item.id} className="history-item" onClick={() => loadHistoryItem(item)}>
+                      <div className="history-info">
+                        <span className="history-date">{item.date}</span>
+                        <span className="history-meta">{item.provider.toUpperCase()} • {item.modelId} • {formatTime(item.duration)}</span>
+                      </div>
+                      <button className="delete-btn" onClick={(e) => deleteHistoryItem(item.id, e)}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+      </main>
     </div>
   );
 };
