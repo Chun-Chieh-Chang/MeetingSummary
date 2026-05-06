@@ -95,12 +95,26 @@ const App: React.FC = () => {
 
 歡迎使用 **MeetingSummary Pro**！本工具利用 Google Gemini 的多模態能力，直接分析您的會議音訊並生成總結。
 
+### 📱 PWA 安裝 (行動裝置)
+本應用支援 PWA (Progressive Web App)，可在行動裝置上安裝為獨立應用：
+- **iOS (Safari)**：點擊分享按鈕 → 「新增到主螢幕」
+- **Android (Chrome)**：點擊選單 → 「安裝應用程式」或「新增到主螢幕」
+
 ### 🛠️ 操作步驟 (Step-by-Step)
-1. **選擇服務商**：在上方下拉選單選擇您擁有的 API 服務商。
-2. **選擇 Gemini 模型**：從下方選單選擇您要使用的 Gemini 模型。
-3. **填入金鑰**：在輸入框填入對應的 API Key。
-4. **開始會議**：點擊 **Start Meeting**，系統會開始錄製您電腦麥克風的聲音。
-5. **結束並總結**：點擊 **Stop Recording**，系統會自動辨識發言人並生成總結。
+
+#### 選項一：使用麥克風錄音
+1. **選擇音訊來源**：點擊 **🎤 麥克風錄音** 按鈕
+2. **填入金鑰**：在輸入框填入 Gemini API Key
+3. **開始錄音**：點擊 **Start Recording**，系統會開始錄製您電腦麥克風的聲音
+4. **結束錄音**：點擊 **Stop Recording** 停止錄音
+5. **AI 分析**：系統會自動將音訊發送給 Gemini API 進行轉錄與總結
+
+#### 選項二：上傳現有音訊檔案
+1. **選擇音訊來源**：點擊 **📂 上傳檔案** 按鈕
+2. **選擇檔案**：從您的裝置選擇音訊或影片檔案（支援 MP3, WAV, WebM, MP4 等格式）
+3. **填入金鑰**：在輸入框填入 Gemini API Key
+4. **開始分析**：點擊 **Start Analysis** 開始處理
+5. **查看結果**：系統會自動將音訊發送給 Gemini API 進行轉錄與總結
 
 ### 🎁 免費資源獲取 (Free API Keys)
 如果您還沒有 API Key，可以從以下官方渠道獲取免費額度：
@@ -719,7 +733,7 @@ const App: React.FC = () => {
                   transition: 'all 0.3s'
                 }}
               >
-                📂 上傳檔案
+                {selectedFile ? 'Change File' : 'Upload File'}
               </button>
               <input 
                 type="file" 
@@ -783,7 +797,7 @@ const App: React.FC = () => {
             }}
             disabled={isProcessing}
           >
-            {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : audioSource === 'record' ? 'Start Meeting' : '分析檔案'}
+            {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : audioSource === 'record' ? 'Start Recording' : selectedFile ? 'Start Analysis' : 'Select File'}
           </button>
         </section>
 

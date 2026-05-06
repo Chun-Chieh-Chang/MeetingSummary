@@ -1,0 +1,26 @@
+{
+  "name": "MeetingSummary Pro",
+  "short_name": "MeetingSummary",
+  "description": "Premium Agent-Driven Transcription & Synthesis",
+  "start_url": "/MeetingSummary/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#1e3a8a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/MeetingSummary/public/icons-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/MeetingSummary/public/icons-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "prefer_related_applications": false
+}
