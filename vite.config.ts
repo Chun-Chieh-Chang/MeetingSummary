@@ -39,13 +39,13 @@ export default defineConfig({
         theme_color: '#1e3a8a',
         icons: [
           {
-            src: '/MeetingSummary/public/icons/icons-192.png',
+            src: '/MeetingSummary/icons/icons-192.png',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: '/MeetingSummary/public/icons/icons-512.png',
+            src: '/MeetingSummary/icons/icons-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'
