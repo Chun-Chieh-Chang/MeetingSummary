@@ -2,18 +2,90 @@ import React, { useState, useRef } from 'react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import './App.css';
 
+// Gemini Free Tier Models
+interface GeminiModel {
+  id: string;
+  name: string;
+  description: string;
+  rpm: number;
+  rpd: number;
+  tpm: number;
+  contextWindow: string;
+  status: 'stable' | 'preview';
+  isAudioSupported: boolean;
+}
+
+const GEMINI_MODELS: GeminiModel[] = [
+  {
+    id: 'gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    description: '高智慧度模型，適合複雜分析與長上下文處理',
+    rpm: 5,
+    rpd: 100,
+    tpm: 250000,
+    contextWindow: '1M tokens',
+    status: 'stable',
+    isAudioSupported: true
+  },
+  {
+    id: 'gemini-2.5-flash',
+    name: 'Gemini 2.5 Flash',
+    description: '平衡型模型，快速回應與良好品質的折衷',
+    rpm: 10,
+    rpd: 250,
+    tpm: 250000,
+    contextWindow: '1M tokens',
+    status: 'stable',
+    isAudioSupported: true
+  },
+  {
+    id: 'gemini-2.5-flash-lite',
+    name: 'Gemini 2.5 Flash-Lite',
+    description: '高效能模型，最高請求次數限制，適合大量使用',
+    rpm: 15,
+    rpd: 1000,
+    tpm: 250000,
+    contextWindow: '1M tokens',
+    status: 'stable',
+    isAudioSupported: true
+  },
+  {
+    id: 'gemini-3-flash',
+    name: 'Gemini 3 Flash (Preview)',
+    description: '最新預覽版本，具備進階功能',
+    rpm: -1,
+    rpd: -1,
+    tpm: -1,
+    contextWindow: '1M tokens',
+    status: 'preview',
+    isAudioSupported: true
+  },
+  {
+    id: 'gemini-3.1-flash-lite',
+    name: 'Gemini 3.1 Flash-Lite (Preview)',
+    description: '最新預覽版本，高效能處理',
+    rpm: -1,
+    rpd: -1,
+    tpm: -1,
+    contextWindow: '1M tokens',
+    status: 'preview',
+    isAudioSupported: true
+  }
+];
 
 interface MeetingRecord {
   id: string;
   date: string;
   duration: number;
   provider: string;
+  modelId: string;
   transcript: string;
   summary: string;
 }
 
 const App: React.FC = () => {
   const [provider, setProvider] = useState<'gemini' | 'assemblyai' | 'deepgram'>('gemini');
+  const [geminiModel, setGeminiModel] = useState<string>('gemini-2.5-flash');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [view, setView] = useState<'current' | 'history'>('current');
@@ -21,13 +93,14 @@ const App: React.FC = () => {
   const [transcript, setTranscript] = useState<string>(`
 # 📘 軟體運作說明 (User Guide)
 
-歡迎使用 **MeetingSummary Pro**！本工具利用 Google Gemini 1.5 的多模態能力，直接分析您的會議音訊並生成總結。
+歡迎使用 **MeetingSummary Pro**！本工具利用 Google Gemini 的多模態能力，直接分析您的會議音訊並生成總結。
 
 ### 🛠️ 操作步驟 (Step-by-Step)
 1. **選擇服務商**：在上方下拉選單選擇您擁有的 API 服務商。
-2. **填入金鑰**：在輸入框填入對應的 API Key。
-3. **開始會議**：點擊 **Start Meeting**，系統會開始錄製您電腦麥克風的聲音。
-4. **結束並總結**：點擊 **Stop Recording**，系統會自動辨識發言人並生成總結。
+2. **選擇 Gemini 模型**：從下方選單選擇您要使用的 Gemini 模型。
+3. **填入金鑰**：在輸入框填入對應的 API Key。
+4. **開始會議**：點擊 **Start Meeting**，系統會開始錄製您電腦麥克風的聲音。
+5. **結束並總結**：點擊 **Stop Recording**，系統會自動辨識發言人並生成總結。
 
 ### 🎁 免費資源獲取 (Free API Keys)
 如果您還沒有 API Key，可以從以下官方渠道獲取免費額度：
@@ -35,6 +108,22 @@ const App: React.FC = () => {
 - **[AssemblyAI](https://www.assemblyai.com/)**: 提供 $50 試用金，具備頂級的角色辨識能力。
 - **[Deepgram](https://www.deepgram.com/)**: 註冊即贈送 $200 額度，語音辨識速度極快。
 - **[Groq Cloud](https://console.groq.com/)**: 適合極速文字總結（Llama 3 模型）。
+
+### 📊 Gemini 免費層模型比較
+
+| 模型 | RPM | RPD | TPM | Context | 音訊支援 | 狀態 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| Gemini 2.5 Pro | 5 | 100 | 250K | 1M | ✅ | 穩定版 |
+| Gemini 2.5 Flash | 10 | 250 | 250K | 1M | ✅ | 穩定版 |
+| Gemini 2.5 Flash-Lite | 15 | 1,000 | 250K | 1M | ✅ | 穩定版 |
+| Gemini 3 Flash | 有限 | 有限 | 有限 | 1M | ✅ | 預覽版 |
+| Gemini 3.1 Flash-Lite | 有限 | 有限 | 有限 | 1M | ✅ | 預覽版 |
+
+**說明**：
+- **RPM** = Requests Per Minute (每分鐘請求數)
+- **RPD** = Requests Per Day (每日請求數)
+- **TPM** = Tokens Per Minute (每分鐘 token 數)
+- **Context** = 上下文視窗大小
 
 ---
 *提示：建議在安靜環境下錄音，以獲得最佳的角色辨識效果。*
@@ -63,6 +152,7 @@ const App: React.FC = () => {
       date: new Date().toLocaleString('zh-TW'),
       duration,
       provider,
+      modelId: geminiModel,
       transcript: newTranscript,
       summary: newSummary
     };
@@ -83,6 +173,7 @@ const App: React.FC = () => {
     setSummary(item.summary);
     setDuration(item.duration);
     setProvider(item.provider as any);
+    setGeminiModel(item.modelId);
     setView('current');
   };
 
@@ -161,6 +252,9 @@ const App: React.FC = () => {
     setIsRecording(false);
   };
 
+  const getGeminiModelInfo = (modelId: string) => {
+    return GEMINI_MODELS.find(m => m.id === modelId);
+  };
 
   const processAudio = async (blob: Blob) => {
     const currentKey = provider === 'gemini' ? apiKey : (provider === 'assemblyai' ? assemblyKey : deepgramKey);
@@ -190,7 +284,7 @@ const App: React.FC = () => {
 
   const processWithGemini = async (blob: Blob, key: string) => {
     const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: geminiModel });
 
     const reader = new FileReader();
     reader.readAsDataURL(blob);
@@ -288,13 +382,65 @@ const App: React.FC = () => {
             </select>
 
             {provider === 'gemini' && (
-              <input 
-                type="password" 
-                placeholder="Enter Gemini API Key" 
-                value={apiKey} 
-                onChange={(e) => setApiKey(e.target.value)}
-                className="api-input"
-              />
+              <>
+                <select
+                  value={geminiModel}
+                  onChange={(e) => setGeminiModel(e.target.value)}
+                  className="api-input"
+                  style={{ marginBottom: '12px' }}
+                >
+                  {GEMINI_MODELS.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name} {model.status === 'preview' ? '(Preview)' : ''}
+                    </option>
+                  ))}
+                </select>
+                
+                <div className="model-info" style={{ 
+                  background: 'rgba(58, 124, 168, 0.05)',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  marginBottom: '12px'
+                }}>
+                  {(() => {
+                    const modelInfo = getGeminiModelInfo(geminiModel);
+                    return (
+                      <>
+                        <strong>{modelInfo?.name}</strong>
+                        <p style={{ margin: '8px 0 0', color: 'var(--text-secondary)' }}>
+                          {modelInfo?.description}
+                        </p>
+                        <div style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: 'repeat(2, 1fr)', 
+                          gap: '4px',
+                          marginTop: '8px'
+                        }}>
+                          {modelInfo?.rpm && modelInfo.rpm > 0 && (
+                            <span>⚡ {modelInfo.rpm} RPM</span>
+                          )}
+                          {modelInfo?.rpd && modelInfo.rpd > 0 && (
+                            <span>📅 {modelInfo.rpd} RPD</span>
+                          )}
+                          {modelInfo?.tpm && modelInfo.tpm > 0 && (
+                            <span>📊 {(modelInfo.tpm / 1000)}K TPM</span>
+                          )}
+                          <span>🧠 {modelInfo?.contextWindow}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                <input 
+                  type="password" 
+                  placeholder="Enter Gemini API Key" 
+                  value={apiKey} 
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="api-input"
+                />
+              </>
             )}
             {provider === 'assemblyai' && (
               <input 
@@ -369,7 +515,9 @@ const App: React.FC = () => {
                       <div key={item.id} className="history-item" onClick={() => loadHistoryItem(item)}>
                         <div className="history-info">
                           <span className="history-date">{item.date}</span>
-                          <span className="history-meta">{item.provider.toUpperCase()} • {formatTime(item.duration)}</span>
+                          <span className="history-meta">
+                            {item.provider.toUpperCase()} • {item.modelId} • {formatTime(item.duration)}
+                          </span>
                         </div>
                         <button className="delete-btn" onClick={(e) => deleteHistoryItem(item.id, e)}>×</button>
                       </div>
