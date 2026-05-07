@@ -509,6 +509,8 @@ const App: React.FC = () => {
     if (err instanceof Error) {
       if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
         setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+      } else if (err.message?.includes('503') || err.message?.includes('Service Unavailable') || err.message?.includes('high demand')) {
+        setSummary(`❌ API 服務暫時不可用！\n\n${err.message}\n\n這通常是因為模型需求量高導致的暫時性問題。\n\n建議：\n1. 等待 1-2 分鐘後重試\n2. 切換到 Gemini 2.5 Flash-Lite 模型\n3. 或切換到 Gemini 2.5 Pro 模型`);
       } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
         setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
       } else {
@@ -606,6 +608,8 @@ const App: React.FC = () => {
       if (err instanceof Error) {
         if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
           setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+        } else if (err.message?.includes('503') || err.message?.includes('Service Unavailable') || err.message?.includes('high demand')) {
+          setSummary(`❌ API 服務暫時不可用！\n\n${err.message}\n\n這通常是因為模型需求量高導致的暫時性問題。\n\n建議：\n1. 等待 1-2 分鐘後重試\n2. 切換到 Gemini 2.5 Flash-Lite 模型\n3. 或切換到 Gemini 2.5 Pro 模型`);
         } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
           setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
         } else {
