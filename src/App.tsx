@@ -507,8 +507,15 @@ const App: React.FC = () => {
     
     // 檢查是否為 RPM 限制錯誤
     if (err instanceof Error) {
-      if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
-        setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+      const errorMsg = err.message?.toLowerCase() || '';
+      
+      if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED') || err.message?.includes('exceeded your current quota')) {
+        // 檢查是否為 Gemini 2.5 Pro 的配額錯誤
+        if (errorMsg.includes('gemini-2.5-pro') || errorMsg.includes('limit: 0')) {
+          setSummary(`❌ API 配額已用完！\n\nGemini 2.5 Pro 模型在免費版中沒有配額。\n\n建議：\n1. 切換到 Gemini 2.5 Flash 模型（每日 250 次請求）\n2. 或切換到 Gemini 2.5 Flash-Lite 模型（每日 1000 次請求）\n3. 查看配額詳情：https://ai.dev/rate-limit`);
+        } else {
+          setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+        }
       } else if (err.message?.includes('503') || err.message?.includes('Service Unavailable') || err.message?.includes('high demand')) {
         setSummary(`❌ API 服務暫時不可用！\n\n${err.message}\n\n這通常是因為模型需求量高導致的暫時性問題。\n\n建議：\n1. 等待 1-2 分鐘後重試\n2. 切換到 Gemini 2.5 Flash-Lite 模型\n3. 或切換到 Gemini 2.5 Pro 模型`);
       } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
@@ -606,8 +613,15 @@ const App: React.FC = () => {
       
       // 檢查是否為 RPM 限制錯誤
       if (err instanceof Error) {
-        if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED')) {
-          setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+        const errorMsg = err.message?.toLowerCase() || '';
+        
+        if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED') || err.message?.includes('exceeded your current quota')) {
+          // 檢查是否為 Gemini 2.5 Pro 的配額錯誤
+          if (errorMsg.includes('gemini-2.5-pro') || errorMsg.includes('limit: 0')) {
+            setSummary(`❌ API 配額已用完！\n\nGemini 2.5 Pro 模型在免費版中沒有配額。\n\n建議：\n1. 切換到 Gemini 2.5 Flash 模型（每日 250 次請求）\n2. 或切換到 Gemini 2.5 Flash-Lite 模型（每日 1000 次請求）\n3. 查看配額詳情：https://ai.dev/rate-limit`);
+          } else {
+            setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
+          }
         } else if (err.message?.includes('503') || err.message?.includes('Service Unavailable') || err.message?.includes('high demand')) {
           setSummary(`❌ API 服務暫時不可用！\n\n${err.message}\n\n這通常是因為模型需求量高導致的暫時性問題。\n\n建議：\n1. 等待 1-2 分鐘後重試\n2. 切換到 Gemini 2.5 Flash-Lite 模型\n3. 或切換到 Gemini 2.5 Pro 模型`);
         } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
