@@ -110,7 +110,7 @@ const App: React.FC = () => {
 
 #### 選項二：上傳現有音訊檔案
 1. **選擇音訊來源**：點擊 **📂 Upload Files** 按鈕
-2. **選擇檔案**：從您的裝置選擇一個或多個音訊或影片檔案（支援 MP3, WAV, WebM, MP4 等格式）
+2. **選擇檔案**：從您的裝置選擇一個或多個音訊或影片檔案（支援 MP3, WAV, WebM, MP4, M4A 等格式）
    - 支援多檔案同時上傳
    - 每個檔案最大 100MB
    - 系統會依序處理所有檔案
@@ -209,7 +209,7 @@ const App: React.FC = () => {
     const MAX_SIZE = 100 * 1024 * 1024; // 100MB
     
     // 檢查檔案類型
-    const audioTypes = ['audio/mpeg', 'audio/wav', 'audio/webm', 'audio/mp3', 'audio/mp4', 'audio/ogg', 'audio/flac'];
+    const audioTypes = ['audio/mpeg', 'audio/wav', 'audio/webm', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/ogg', 'audio/flac'];
     const videoTypes = ['video/mp4', 'video/webm', 'video/avi'];
     
     Array.from(files).forEach(file => {
