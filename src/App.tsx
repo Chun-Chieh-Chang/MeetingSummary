@@ -420,20 +420,26 @@ const App: React.FC = () => {
       
       try {
         if (provider === 'gemini') {
-          await processWithFile(file, currentKey, i > 0);
+          const responseText = await processWithFile(file, currentKey);
+          const newTranscript = i > 0 ? `${transcript}\n\n---\n\n## 檔案: ${file.name}\n\n${responseText}` : responseText;
+          
+          setTranscript(newTranscript);
+          setSummary(`Analysis Complete (Gemini). File: ${file.name}`);
+          setIsProcessing(false);
+          saveToHistory(newTranscript, `Analysis Complete (Gemini). File: ${file.name}`);
           setTranscript(prev => `${prev}✅ 完成: ${file.name}\n\n`);
         } else {
           setSummary(`${provider.toUpperCase()} integration is reserved. Currently implementing...`);
           setTimeout(() => setIsProcessing(false), 2000);
         }
-      } catch (err: unknown) {
-        console.error(`${provider.toUpperCase()} Error:`, err);
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      } catch (error: unknown) {
+        console.error(`${provider.toUpperCase()} Error:`, error);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         setTranscript(prev => `${prev}❌ 錯誤: ${file.name} - ${errorMessage}\n\n`);
+        setIsProcessing(false);
       }
     }
     
-    setIsProcessing(false);
     setSummary(`處理完成！共 ${selectedFiles.length} 個檔案。`);
     setUploadQueue([]);
   };
@@ -530,115 +536,79 @@ const App: React.FC = () => {
   }
   };
 
-  const processWithFile = async (file: File, key: string, append: boolean = false): Promise<void> => {
-    return new Promise<void>((resolve, reject) => {
-      const genAI = new GoogleGenerativeAI(key);
-      const model = genAI.getGenerativeModel({ model: geminiModel });
+  const processWithFile = async (file: File, key: string): Promise<string> => {
+    const genAI = new GoogleGenerativeAI(key);
+    const model = genAI.getGenerativeModel({ model: geminiModel });
 
-      // 讀取檔案
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      
-      reader.onloadend = async () => {
+    // 讀取檔案
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    
+    const base64Data = await new Promise<string>((resolve, reject) => {
+      reader.onloadend = () => {
         try {
-          const base64Data = (reader.result as string).split(',')[1];
-          
-          // 檢查 Base64 大小 (Gemini API 限制：100MB)
-          const maxSize = 100 * 1024 * 1024;
-          const base64Size = base64Data.length * 3 / 4;
-          
-          if (base64Size > maxSize) {
-            setSummary(`❌ 檔案過大！\n\n上傳大小：${(base64Size / 1024 / 1024).toFixed(2)} MB\n最大限制：100 MB\n\n請選擇較小的檔案。`);
-            setIsProcessing(false);
-            reject(new Error('File too large'));
-            return;
-          }
-
-          const prompt = `
-            ## 角色設定
-            你是一位專業的行政助理與戰略分析師。請仔細聽取這段會議音訊，並依照以下結構進行分析與記錄。
-            請使用 **繁體中文 (zh-TW)** 進行輸出，並保持專業、簡潔的語氣。
-
-            ## 輸出規範 (Markdown 格式)
-
-            ### 1. 執行摘要 (Executive Summary)
-            - 用 3-5 句話概括會議的核心目的與最終結論。
-
-            ### 2. 角色標註逐字稿 (Diarized Transcript)
-            - 標註發言者 (例如：發言者 1, 發言者 2)。
-            - 如果能從對話中得知姓名，請直接使用姓名。
-            - 紀錄關鍵對話內容，省略贅字，保持語意流暢。
-
-            ### 3. 議題深度分析 (Topic Analysis)
-            - 條列會議中討論的所有主要議題。
-            - 簡述各議題的討論進度或不同觀點。
-
-            ### 4. 決策紀錄與待辦事項 (Decisions & Action Items)
-            | 類型 | 內容描述 | 負責人 | 期限/備註 |
-            | :--- | :--- | :--- | :--- |
-            | [決策/待辦] | 具體描述 | 若提及請標註 | 若提及請標註 |
-
-            ### 5. 會議氛圍與建議 (Tone & Insights)
-            - 簡述會議氛圍（如：積極、嚴肅、分歧）。
-            - 提供 1-2 個後續跟進的專業建議。
-
-            ---
-            請確保排版優雅，適合在高階主管會議後直接閱讀。
-          `;
-
-          const result = await model.generateContent([
-            prompt,
-            {
-              inlineData: {
-                data: base64Data,
-                mimeType: file.type
-              }
-            }
-          ]);
-
-          const responseText = result.response.text();
-          const newTranscript = append ? `${transcript}\n\n---\n\n## 檔案: ${file.name}\n\n${responseText}` : responseText;
-          
-          setTranscript(newTranscript);
-          setSummary(`Analysis Complete (Gemini). File: ${file.name}`);
-          setIsProcessing(false);
-          saveToHistory(newTranscript, `Analysis Complete (Gemini). File: ${file.name}`);
-          resolve();
-        } catch (err: unknown) {
-          console.error("Gemini API Error:", err);
-          
-          // 檢查是否為 RPM 限制錯誤
-          if (err instanceof Error) {
-            const errorMsg = err.message?.toLowerCase() || '';
-            
-            if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED') || err.message?.includes('exceeded your current quota')) {
-              // 檢查是否為 Gemini 2.5 Pro 的配額錯誤
-              if (errorMsg.includes('gemini-2.5-pro') || errorMsg.includes('limit: 0')) {
-                setSummary(`❌ API 配額已用完！\n\nGemini 2.5 Pro 模型在免費版中沒有配額。\n\n建議：\n1. 切換到 Gemini 2.5 Flash 模型（每日 250 次請求）\n2. 或切換到 Gemini 2.5 Flash-Lite 模型（每日 1000 次請求）\n3. 查看配額詳情：https://ai.dev/rate-limit`);
-              } else {
-                setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
-              }
-            } else if (err.message?.includes('503') || err.message?.includes('Service Unavailable') || err.message?.includes('high demand')) {
-              setSummary(`❌ API 服務暫時不可用！\n\n${err.message}\n\n這通常是因為模型需求量高導致的暫時性問題。\n\n建議：\n1. 等待 1-2 分鐘後重試\n2. 切換到 Gemini 2.5 Flash-Lite 模型\n3. 或切換到 Gemini 2.5 Pro 模型`);
-            } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
-              setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
-            } else {
-              setSummary(`❌ Gemini API 錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和檔案格式。`);
-            }
-          } else {
-            setSummary(`❌ Gemini API 錯誤：\n\n未知錯誤\n\n請檢查您的 API Key 和檔案格式。`);
-          }
-          setIsProcessing(false);
-          reject(err);
+          const data = (reader.result as string).split(',')[1];
+          resolve(data);
+        } catch {
+          reject(new Error('Failed to read file'));
         }
       };
-      
       reader.onerror = () => {
-        setSummary("❌ 讀取檔案失敗！\n\n請檢查檔案是否損毀或格式是否正確。");
-        setIsProcessing(false);
         reject(new Error('Failed to read file'));
       };
     });
+    
+    // 檢查 Base64 大小 (Gemini API 限制：100MB)
+    const maxSize = 100 * 1024 * 1024;
+    const base64Size = base64Data.length * 3 / 4;
+    
+    if (base64Size > maxSize) {
+      throw new Error(`File too large: ${(base64Size / 1024 / 1024).toFixed(2)} MB`);
+    }
+
+    const prompt = `
+      ## 角色設定
+      你是一位專業的行政助理與戰略分析師。請仔細聽取這段會議音訊，並依照以下結構進行分析與記錄。
+      請使用 **繁體中文 (zh-TW)** 進行輸出，並保持專業、簡潔的語氣。
+
+      ## 輸出規範 (Markdown 格式)
+
+      ### 1. 執行摘要 (Executive Summary)
+      - 用 3-5 句話概括會議的核心目的與最終結論。
+
+      ### 2. 角色標註逐字稿 (Diarized Transcript)
+      - 標註發言者 (例如：發言者 1, 發言者 2)。
+      - 如果能從對話中得知姓名，請直接使用姓名。
+      - 紀錄關鍵對話內容，省略贅字，保持語意流暢。
+
+      ### 3. 議題深度分析 (Topic Analysis)
+      - 條列會議中討論的所有主要議題。
+      - 簡述各議題的討論進度或不同觀點。
+
+      ### 4. 決策紀錄與待辦事項 (Decisions & Action Items)
+      | 類型 | 內容描述 | 負責人 | 期限/備註 |
+      | :--- | :--- | :--- | :--- |
+      | [決策/待辦] | 具體描述 | 若提及請標註 | 若提及請標註 |
+
+      ### 5. 會議氛圍與建議 (Tone & Insights)
+      - 簡述會議氛圍（如：積極、嚴肅、分歧）。
+      - 提供 1-2 個後續跟進的專業建議。
+
+      ---
+      請確保排版優雅，適合在高階主管會議後直接閱讀。
+    `;
+
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: base64Data,
+          mimeType: file.type
+        }
+      }
+    ]);
+
+    return result.response.text();
   };
 
   const formatTime = (seconds: number) => {
