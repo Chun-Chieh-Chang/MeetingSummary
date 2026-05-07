@@ -152,7 +152,6 @@ const App: React.FC = () => {
   const [audioSource, setAudioSource] = useState<'record' | 'upload'>('record');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadQueue, setUploadQueue] = useState<File[]>([]);
-  const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number>(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -389,40 +388,6 @@ const App: React.FC = () => {
     }
   };
 
-  const processFileAudio = async (file: File) => {
-    const currentKey = provider === 'gemini' ? apiKey : (provider === 'assemblyai' ? assemblyKey : deepgramKey);
-    
-    if (!currentKey) {
-      alert(`Please provide an API Key for ${provider}.`);
-      return;
-    }
-
-    // 檔案大小限制檢查
-    const MAX_SIZE = 100 * 1024 * 1024; // 100MB
-    if (file.size > MAX_SIZE) {
-      alert(`❌ 檔案過大！\n\n最大允許大小：100 MB\n您的檔案大小：${(file.size / 1024 / 1024).toFixed(2)} MB`);
-      return;
-    }
-
-    setIsProcessing(true);
-    setSummary(`${provider.toUpperCase()} is analyzing ${file.name}...`);
-    
-    try {
-      if (provider === 'gemini') {
-        await processWithFile(file, currentKey);
-      } else {
-        // Placeholder for future implementation of other providers
-        setSummary(`${provider.toUpperCase()} integration is reserved. Currently implementing...`);
-        setTimeout(() => setIsProcessing(false), 2000);
-      }
-    } catch (err: unknown) {
-      console.error(`${provider.toUpperCase()} Error:`, err);
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setSummary(`❌ 處理錯誤：\n\n${errorMessage}\n\n請檢查您的 API Key 和檔案格式。`);
-      setIsProcessing(false);
-    }
-  };
-
   const processAllFiles = async () => {
     if (uploadQueue.length === 0) {
       alert('請先選擇檔案');
@@ -437,12 +402,10 @@ const App: React.FC = () => {
     }
 
     setUploadQueue([...selectedFiles]);
-    setCurrentProcessingIndex(0);
     setTranscript(`開始處理 ${selectedFiles.length} 個檔案...\n\n`);
     
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
-      setCurrentProcessingIndex(i + 1);
       
       setTranscript(prev => `${prev}處理中 (${i + 1}/${selectedFiles.length}): ${file.name}\n`);
       
@@ -474,7 +437,6 @@ const App: React.FC = () => {
     setIsProcessing(false);
     setSummary(`處理完成！共 ${selectedFiles.length} 個檔案。`);
     setUploadQueue([]);
-    setCurrentProcessingIndex(0);
   };
 
   const processWithGemini = async (blob: Blob, key: string) => {

@@ -138,3 +138,107 @@ Initialize the `MeetingSummary` project with a robust Knowledge Base (Wiki) stru
   - 進度顯示與使用者回饋
 
 ---
+## [2026-05-07] - Code Quality & Project Structure Cleanup
+
+### 🎯 Objective
+修復 ESLint 錯誤、清理冗餘檔案，並更新專案結構。
+
+### 📝 Task List
+
+#### Code Quality Fixes
+- [x] 修復 commit 4a6d991 中的 ESLint 錯誤：
+  - 移除未使用的 `currentProcessingIndex` 狀態變數
+  - 移除未使用的 `processFileAudio` 函數
+- [x] 驗證 `npx tsc --noEmit` 通過
+- [x] 驗證 `npx eslint .` 通過
+- [x] 驗證 `npx vite build` 成功
+
+#### Project Structure Cleanup
+- [x] 移除 `PWA_SETUP.md`（內容已併入 DEV_LOG.md）
+- [x] 移除 `implementation_plan.md`（所有功能已完成）
+- [x] 移除根目錄的 `manifest.webmanifest`（由 vite-plugin-pwa 生成）
+- [x] 移除 `SKILL.md`（已過時）
+- [x] 更新 `.gitignore` 排除 `dist/`, `node_modules/`, `*.log` 等
+- [x] 更新 `README.md` 反映最新功能
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+
+#### Issue 1: ESLint 錯誤（commit 4a6d991）
+- **Problem**: ESLint 檢測到 2 個錯誤：
+  - `currentProcessingIndex` 被賦值但從未使用
+  - `processFileAudio` 被賦值但從未使用
+- **Root Cause**: 在實作多檔案上傳功能時，新增了 `currentProcessingIndex` 用於顯示進度，但後來改用 `uploadQueue.length` 來計算進度，導致該變數未被使用。`processFileAudio` 是早期單一檔案處理邏輯的殘留函數。
+- **Solution**: 
+  - 移除 `currentProcessingIndex` 狀態變數
+  - 移除 `processFileAudio` 函數
+  - 使用 `uploadQueue.length` 計算剩餘檔案數量
+
+#### Issue 2: 冗餘檔案累積
+- **Problem**: 專案中存在多個過時或重複的文件檔案
+- **Root Cause**: 
+  - `PWA_SETUP.md` 與 `DEV_LOG.md` 內容重複
+  - `implementation_plan.md` 中的功能已全部完成
+  - 根目錄的 `manifest.webmanifest` 與 vite-plugin-pwa 生成的版本重複
+- **Solution**: 
+  - 保留 `DEV_LOG.md` 作為唯一開發記錄
+  - 移除已完成的實作計畫
+  - 移除重複的 PWA 設定文件
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 
+  - 移除未使用的程式碼與文件
+  - 清理專案結構
+- **Preventive**: 
+  - 建立程式碼審查清單，包含「檢查未使用變數/函數」項目
+  - 定期清理過時文件
+  - 建立 `pre-commit` hook 自動執行 `npx tsc --noEmit`, `npx eslint .`, `npx vite build`
+
+---
+
+## [2026-05-07] - PWA Icon Path Fix & Layout Redesign
+
+### 🎯 Objective
+修復 PWA 圖示路徑錯誤，並重新規劃版面以提升空間利用率。
+
+### 📝 Task List
+
+#### PWA Icon Path Fix
+- [x] 修正 `vite.config.ts` 中的 PWA manifest 設定
+- [x] 修正 `manifest.webmanifest` 圖示路徑（`/public/icons/` → `/icons/`）
+- [x] 更新 `.gitignore` 移除 `/public/icons/` 排除規則
+- [x] 驗證圖示正確部署至 GitHub Pages
+
+#### Layout Redesign
+- [x] 重新規劃版面為 **Sidebar + Main Content** 架構
+  - 桌機：左側固定 Sidebar（320px）+ 右側全寬 Transcript 區
+  - 手機：上下堆疊，Sidebar 全寬，內容區佔剩餘高度
+- [x] 移除獨立 Status Panel（原佔 1/3 版面），整合至 Sidebar 底部
+- [x] 移除 `content-grid` 雙欄佈局，Transcript 現在佔滿主內容區
+- [x] 更新 `index.css`：移除 `place-items: center`，`#root` 改為全寬全高
+- [x] 新增 Print 樣式：列印時隱藏 Sidebar，僅輸出 Transcript 內容
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+
+#### Issue 1: PWA 圖示 404 Not Found
+- **Problem**: `GET https://chun-chieh-chang.github.io/MeetingSummary/public/icons/icons-192.png 404`
+- **Root Cause 1**: manifest 路徑包含 `/public/icons/`，但 Vite 建構時會將 `public/` 內容複製至 `dist/` 根目錄，正確路徑應為 `/MeetingSummary/icons/icons-192.png`
+- **Root Cause 2**: `.gitignore` 中誤加 `/public/icons/`，導致圖示從未被推送至 GitHub
+- **Solution**: 
+  - 修正 `vite.config.ts` 與 `manifest.webmanifest` 中的圖示路徑
+  - 將 `public/icons/` 從 `.gitignore` 移除
+  - 重新推送至 GitHub
+
+#### Issue 2: 手機版 layout 擠壓，空間利用不佳
+- **Root Cause**: 原版面為橫排 Controls + 雙欄 Content Grid，在小螢幕上無法有效利用空間
+- **Solution**: 改為 Sidebar + Main Content 架構，手機版改為垂直堆疊，Transcript 佔滿剩餘空間
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 
+  - 修正圖示路徑
+  - 重新設計版面佈局
+- **Preventive**: 
+  - 建立 PWA 部署前檢查清單（`.kiro/steering/pwa-checklist.md`）
+  - 建立 PWA 建構前自動驗證 hook（`.kiro/hooks/pwa-build-check.json`）
+  - **Lesson Learned**: Vite 的 `public/` 目錄在建構後會被攤平至 `dist/` 根目錄，manifest 中的路徑不應包含 `public/`
+
+---
