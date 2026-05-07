@@ -237,7 +237,6 @@ const App: React.FC = () => {
   const clearFileSelection = () => {
     setSelectedFiles([]);
     setUploadQueue([]);
-    setCurrentProcessingIndex(0);
     setAudioSource('record');
     setTranscript('');
   };
