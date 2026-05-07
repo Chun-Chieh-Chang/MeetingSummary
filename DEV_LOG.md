@@ -100,3 +100,41 @@ Initialize the `MeetingSummary` project with a robust Knowledge Base (Wiki) stru
 - **Lesson Learned**: Vite 的 `public/` 目錄在建構後會被攤平至 `dist/` 根目錄，manifest 中的路徑不應包含 `public/`
 
 ---
+## [2026-05-07] - Multiple File Upload Support
+
+### 🎯 Objective
+支援一次上傳並串接多個音訊檔案，依序處理並合併結果。
+
+### 📝 Task List
+- [x] 修改 `selectedFile` 狀態為 `selectedFiles` (File[] 陣列)
+- [x] 新增 `uploadQueue` 狀態追蹤待處理檔案
+- [x] 新增 `currentProcessingIndex` 狀態顯示處理進度
+- [x] 修改 `handleFileSelect` 支援多檔案選擇與驗證
+- [x] 新增 `processAllFiles` 函數依序處理所有檔案
+- [x] 修改 `processWithFile` 支援 `append` 參數以串接結果
+- [x] 更新 UI 按鈕文字與顯示邏輯
+- [x] 更新使用者說明文字
+- [x] 驗證 TypeScript 編譯無誤
+- [x] 驗證 Vite 建構成功
+- [x] 推送至 GitHub
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 原設計只支援單一檔案上傳
+- **Root Cause**: `selectedFile` 狀態為 `File | null`，無法儲存多個檔案
+- **Solution**: 
+  - 將 `selectedFile` 改為 `selectedFiles: File[]`
+  - 新增 `uploadQueue` 追蹤待處理檔案
+  - 新增 `currentProcessingIndex` 顯示進度
+  - `processWithFile` 新增 `append` 參數，支援結果串接
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 
+  - 實作多檔案上傳 UI
+  - 實作依序處理邏輯
+  - 實作結果串接功能
+- **Preventive**: 
+  - 檔案大小與格式驗證
+  - 錯誤處理與跳過機制
+  - 進度顯示與使用者回饋
+
+---
