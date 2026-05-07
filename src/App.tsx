@@ -109,11 +109,14 @@ const App: React.FC = () => {
 5. **AI 分析**：系統會自動將音訊發送給 Gemini API 進行轉錄與總結
 
 #### 選項二：上傳現有音訊檔案
-1. **選擇音訊來源**：點擊 **📂 上傳檔案** 按鈕
-2. **選擇檔案**：從您的裝置選擇音訊或影片檔案（支援 MP3, WAV, WebM, MP4 等格式）
+1. **選擇音訊來源**：點擊 **📂 Upload Files** 按鈕
+2. **選擇檔案**：從您的裝置選擇一個或多個音訊或影片檔案（支援 MP3, WAV, WebM, MP4 等格式）
+   - 支援多檔案同時上傳
+   - 每個檔案最大 100MB
+   - 系統會依序處理所有檔案
 3. **填入金鑰**：在輸入框填入 Gemini API Key
-4. **開始分析**：點擊 **Start Analysis** 開始處理
-5. **查看結果**：系統會自動將音訊發送給 Gemini API 進行轉錄與總結
+4. **開始分析**：點擊 **Start Analysis** 開始處理所有檔案
+5. **查看結果**：系統會依序將每個音訊發送給 Gemini API 進行轉錄與總結
 
 ### 🎁 免費資源獲取 (Free API Keys)
 如果您還沒有 API Key，可以從以下官方渠道獲取免費額度：
@@ -147,7 +150,9 @@ const App: React.FC = () => {
   const [assemblyKey, setAssemblyKey] = useState(import.meta.env.VITE_ASSEMBLYAI_API_KEY || '');
   const [deepgramKey, setDeepgramKey] = useState(import.meta.env.VITE_DEEPGRAM_API_KEY || '');
   const [audioSource, setAudioSource] = useState<'record' | 'upload'>('record');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadQueue, setUploadQueue] = useState<File[]>([]);
+  const [currentProcessingIndex, setCurrentProcessingIndex] = useState<number>(0);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -195,32 +200,45 @@ const App: React.FC = () => {
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
     
     // 檔案大小限制：100MB (Gemini API 限制)
     const MAX_SIZE = 100 * 1024 * 1024; // 100MB
-    if (file.size > MAX_SIZE) {
-      alert(`❌ 檔案過大！\n\n最大允許大小：100 MB\n您的檔案大小：${(file.size / 1024 / 1024).toFixed(2)} MB\n\n請選擇較小的檔案或使用檔案上傳 API。`);
-      return;
-    }
     
     // 檢查檔案類型
     const audioTypes = ['audio/mpeg', 'audio/wav', 'audio/webm', 'audio/mp3', 'audio/mp4', 'audio/ogg', 'audio/flac'];
     const videoTypes = ['video/mp4', 'video/webm', 'video/avi'];
     
-    if (!audioTypes.includes(file.type) && !videoTypes.includes(file.type)) {
-      alert(`⚠️ 不支援的檔案格式！\n\n支援的格式：\n• 音訊：MP3, WAV, WebM, MP4, OGG, FLAC\n• 影片：MP4, WebM, AVI\n\n您的檔案類型：${file.type}`);
-      return;
+    Array.from(files).forEach(file => {
+      if (file.size > MAX_SIZE) {
+        invalidFiles.push(`${file.name} (過大: ${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+      } else if (!audioTypes.includes(file.type) && !videoTypes.includes(file.type)) {
+        invalidFiles.push(`${file.name} (不支援格式: ${file.type})`);
+      } else {
+        validFiles.push(file);
+      }
+    });
+    
+    if (invalidFiles.length > 0) {
+      alert(`⚠️ 以下檔案被跳過：\n\n${invalidFiles.join('\n')}\n\n請選擇符合格式的檔案。`);
     }
     
-    setSelectedFile(file);
+    if (validFiles.length === 0) return;
+    
+    setSelectedFiles(validFiles);
+    setUploadQueue(validFiles);
     setAudioSource('upload');
-    setTranscript(`已選擇檔案：${file.name}\n大小：${(file.size / 1024 / 1024).toFixed(2)} MB\n類型：${file.type}\n\n點擊「分析檔案」開始處理。`);
+    setTranscript(`已選擇 ${validFiles.length} 個檔案：\n\n${validFiles.map(f => `• ${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)`).join('\n')}\n\n點擊「Start Analysis」開始處理所有檔案。`);
   };
 
   const clearFileSelection = () => {
-    setSelectedFile(null);
+    setSelectedFiles([]);
+    setUploadQueue([]);
+    setCurrentProcessingIndex(0);
     setAudioSource('record');
     setTranscript('');
   };
@@ -387,7 +405,7 @@ const App: React.FC = () => {
     }
 
     setIsProcessing(true);
-    setSummary(`${provider.toUpperCase()} is analyzing your file...`);
+    setSummary(`${provider.toUpperCase()} is analyzing ${file.name}...`);
     
     try {
       if (provider === 'gemini') {
@@ -403,6 +421,60 @@ const App: React.FC = () => {
       setSummary(`❌ 處理錯誤：\n\n${errorMessage}\n\n請檢查您的 API Key 和檔案格式。`);
       setIsProcessing(false);
     }
+  };
+
+  const processAllFiles = async () => {
+    if (uploadQueue.length === 0) {
+      alert('請先選擇檔案');
+      return;
+    }
+
+    const currentKey = provider === 'gemini' ? apiKey : (provider === 'assemblyai' ? assemblyKey : deepgramKey);
+    
+    if (!currentKey) {
+      alert(`Please provide an API Key for ${provider}.`);
+      return;
+    }
+
+    setUploadQueue([...selectedFiles]);
+    setCurrentProcessingIndex(0);
+    setTranscript(`開始處理 ${selectedFiles.length} 個檔案...\n\n`);
+    
+    for (let i = 0; i < selectedFiles.length; i++) {
+      const file = selectedFiles[i];
+      setCurrentProcessingIndex(i + 1);
+      
+      setTranscript(prev => `${prev}處理中 (${i + 1}/${selectedFiles.length}): ${file.name}\n`);
+      
+      // 檔案大小限制檢查
+      const MAX_SIZE = 100 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        setTranscript(prev => `${prev}❌ 跳過 ${file.name} (過大)\n\n`);
+        continue;
+      }
+      
+      setIsProcessing(true);
+      setSummary(`處理中 (${i + 1}/${selectedFiles.length}): ${file.name}`);
+      
+      try {
+        if (provider === 'gemini') {
+          await processWithFile(file, currentKey, i > 0);
+          setTranscript(prev => `${prev}✅ 完成: ${file.name}\n\n`);
+        } else {
+          setSummary(`${provider.toUpperCase()} integration is reserved. Currently implementing...`);
+          setTimeout(() => setIsProcessing(false), 2000);
+        }
+      } catch (err: unknown) {
+        console.error(`${provider.toUpperCase()} Error:`, err);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setTranscript(prev => `${prev}❌ 錯誤: ${file.name} - ${errorMessage}\n\n`);
+      }
+    }
+    
+    setIsProcessing(false);
+    setSummary(`處理完成！共 ${selectedFiles.length} 個檔案。`);
+    setUploadQueue([]);
+    setCurrentProcessingIndex(0);
   };
 
   const processWithGemini = async (blob: Blob, key: string) => {
@@ -488,7 +560,7 @@ const App: React.FC = () => {
   }
   };
 
-  const processWithFile = async (file: File, key: string) => {
+  const processWithFile = async (file: File, key: string, append: boolean = false) => {
     const genAI = new GoogleGenerativeAI(key);
     const model = genAI.getGenerativeModel({ model: geminiModel });
 
@@ -553,10 +625,12 @@ const App: React.FC = () => {
         ]);
 
         const responseText = result.response.text();
-        setTranscript(responseText);
+        const newTranscript = append ? `${transcript}\n\n---\n\n## 檔案: ${file.name}\n\n${responseText}` : responseText;
+        
+        setTranscript(newTranscript);
         setSummary(`Analysis Complete (Gemini). File: ${file.name}`);
         setIsProcessing(false);
-        saveToHistory(responseText, `Analysis Complete (Gemini). File: ${file.name}`);
+        saveToHistory(newTranscript, `Analysis Complete (Gemini). File: ${file.name}`);
       };
       
       reader.onerror = () => {
@@ -644,16 +718,20 @@ const App: React.FC = () => {
           )}
 
           <div className="audio-source-selector">
-            <button type="button" className={`source-btn ${audioSource === 'record' ? 'active' : ''}`} onClick={() => { setAudioSource('record'); setSelectedFile(null); }}>🎤 麥克風錄音</button>
-            <button type="button" className={`source-btn ${audioSource === 'upload' ? 'active' : ''}`} onClick={() => fileInputRef.current?.click()}>{selectedFile ? 'Change File' : '📂 Upload File'}</button>
-            <input type="file" ref={fileInputRef} accept="audio/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
+            <button type="button" className={`source-btn ${audioSource === 'record' ? 'active' : ''}`} onClick={() => { setAudioSource('record'); setSelectedFiles([]); }}>🎤 麥克風錄音</button>
+            <button type="button" className={`source-btn ${audioSource === 'upload' ? 'active' : ''}`} onClick={() => fileInputRef.current?.click()}>{selectedFiles.length > 0 ? `Change Files (${selectedFiles.length})` : '📂 Upload Files'}</button>
+            <input type="file" multiple ref={fileInputRef} accept="audio/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
           </div>
 
-          {audioSource === 'upload' && selectedFile && (
+          {audioSource === 'upload' && selectedFiles.length > 0 && (
             <div className="file-info">
               <div>
-                <strong>✅ {selectedFile.name}</strong>
-                <div className="file-meta">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB • {selectedFile.type}</div>
+                <strong>✅ 已選擇 {selectedFiles.length} 個檔案</strong>
+                <div className="file-meta">
+                  {selectedFiles.map((f, idx) => (
+                    <div key={idx}>{f.name} ({(f.size / 1024 / 1024).toFixed(2)} MB)</div>
+                  ))}
+                </div>
               </div>
               <button className="file-clear-btn" onClick={clearFileSelection}>×</button>
             </div>
@@ -669,12 +747,12 @@ const App: React.FC = () => {
             className={`record-btn ${isRecording ? 'active' : ''}`}
             onClick={isRecording ? stopRecording : () => {
               if (audioSource === 'record') startRecording();
-              else if (audioSource === 'upload' && selectedFile) processFileAudio(selectedFile);
+              else if (audioSource === 'upload' && selectedFiles.length > 0) processAllFiles();
               else alert('請選擇音訊來源並上傳檔案');
             }}
             disabled={isProcessing}
           >
-            {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : audioSource === 'record' ? 'Start Recording' : selectedFile ? 'Start Analysis' : 'Select File'}
+            {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : audioSource === 'record' ? 'Start Recording' : selectedFiles.length > 0 ? 'Start Analysis' : 'Select File'}
           </button>
           <div className="status-inline">{summary}</div>
         </div>
