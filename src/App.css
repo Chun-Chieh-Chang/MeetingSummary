@@ -78,7 +78,7 @@
 .record-btn:disabled { 
   opacity: 1; 
   cursor: not-allowed; 
-  background: linear-gradient(135deg, var(--text-secondary) 0%, #718096 100%);
+  background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
   position: relative;
   overflow: hidden;
 }
@@ -159,10 +159,11 @@
 
   .transcript-panel, .history-panel { min-height: 0; }
 
-  /* Mobile: navigation adjustment */
-  .sidebar {
-    max-height: 400px;
-  }
+  /* Mobile: settings collapsible */
+  .settings-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 8px 0; font-weight: 600; color: var(--text-primary); border: none; background: none; width: 100%; font-size: 0.9rem; }
+  .settings-body { overflow: hidden; transition: max-height 0.3s ease; }
+  .settings-body.collapsed { max-height: 0; }
+  .settings-body.expanded { max-height: 1000px; }
 }
 
 /* === Selected Files List === */

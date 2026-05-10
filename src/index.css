@@ -3,22 +3,21 @@
 }
 
 :root {
-  /* Design Tokens - Sea Salt Premium Palette (Day) */
-  --bg-base: #F0F7FB;           /* Sea Salt Base */
+  /* Design Tokens - Refreshing Sea Salt Blue */
+  --bg-base: #F0F7FB;
   --surface-card: #FFFFFF;
-  --text-primary: #1A3A5F;      /* Deep Sea Blue Text */
-  --text-secondary: #5A7D9A;    /* Muted Sea Salt */
-  --accent-brand: #3A7CA8;      /* Signature Sea Salt Blue */
-  --accent-hover: #73A8C2;      /* Light Sea Salt */
+  --text-primary: #1A3A5F;
+  --text-secondary: #5A7D9A;
+  --accent-brand: #3A7CA8;
+  --accent-hover: #73A8C2;
   --success: #10B981;
   --error: #EF4444;
-  --border: #B4D8E7;            /* Sea Salt Border */
-  --glass-bg: rgba(255, 255, 255, 0.85);
+  --border: #B4D8E7;
 
   --font-main: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   
   font-family: var(--font-main);
-  line-height: 1.5;
+  line-height: 1.6;
   font-weight: 400;
 
   color-scheme: light;
@@ -31,31 +30,11 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Design Tokens - Sea Salt Premium Palette (Night) */
-    --bg-base: #0B1A2A;         /* Deep Sea Night */
-    --surface-card: #162B40;    /* Midnight Blue Surface */
-    --text-primary: #E6F1F8;    /* Soft Ice Blue Text */
-    --text-secondary: #8BA9C3;  /* Muted Ice Blue */
-    --accent-brand: #73A8C2;    /* Vibrant Sea Salt */
-    --accent-hover: #A3C9E2;
-    --success: #34D399;
-    --error: #F87171;
-    --border: #2A4560;          /* Deep Sea Border */
-    --glass-bg: rgba(22, 43, 64, 0.85);
-    
-    color-scheme: dark;
-  }
-}
-
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
   background-color: var(--bg-base);
-  color: var(--text-primary);
-  transition: background-color 0.3s, color 0.3s;
 }
 
 #root {
@@ -63,14 +42,14 @@ body {
   height: 100vh;
 }
 
-/* Glassmorphism Utilities */
+/* Glassmorphism Utilities (Refined for Light Theme) */
 .glass-card {
-  background: var(--glass-bg);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 10px 30px rgba(58, 124, 168, 0.08);
 }
 
 /* Animations */
@@ -106,4 +85,3 @@ body {
   border-radius: 50%;
   animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
-
