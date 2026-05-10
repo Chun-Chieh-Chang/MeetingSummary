@@ -78,7 +78,7 @@
 .record-btn:disabled { 
   opacity: 1; 
   cursor: not-allowed; 
-  background: linear-gradient(135deg, #a0aec0 0%, #718096 100%);
+  background: linear-gradient(135deg, var(--text-secondary) 0%, #718096 100%);
   position: relative;
   overflow: hidden;
 }

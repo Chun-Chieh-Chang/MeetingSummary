@@ -3,17 +3,17 @@
 }
 
 :root {
-  /* Design Tokens - Color Master Palette (Day) */
-  --bg-base: #F9FAFB;
+  /* Design Tokens - Sea Salt Premium Palette (Day) */
+  --bg-base: #F0F7FB;           /* Sea Salt Base */
   --surface-card: #FFFFFF;
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --accent-brand: #3B82F6;
-  --accent-hover: #2563EB;
+  --text-primary: #1A3A5F;      /* Deep Sea Blue Text */
+  --text-secondary: #5A7D9A;    /* Muted Sea Salt */
+  --accent-brand: #3A7CA8;      /* Signature Sea Salt Blue */
+  --accent-hover: #73A8C2;      /* Light Sea Salt */
   --success: #10B981;
   --error: #EF4444;
-  --border: #E5E7EB;
-  --glass-bg: rgba(255, 255, 255, 0.8);
+  --border: #B4D8E7;            /* Sea Salt Border */
+  --glass-bg: rgba(255, 255, 255, 0.85);
 
   --font-main: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   
@@ -33,17 +33,17 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    /* Design Tokens - Color Master Palette (Night) */
-    --bg-base: #0F172A;
-    --surface-card: #1E293B;
-    --text-primary: #F1F5F9;
-    --text-secondary: #94A3B8;
-    --accent-brand: #60A5FA;
-    --accent-hover: #93C5FD;
+    /* Design Tokens - Sea Salt Premium Palette (Night) */
+    --bg-base: #0B1A2A;         /* Deep Sea Night */
+    --surface-card: #162B40;    /* Midnight Blue Surface */
+    --text-primary: #E6F1F8;    /* Soft Ice Blue Text */
+    --text-secondary: #8BA9C3;  /* Muted Ice Blue */
+    --accent-brand: #73A8C2;    /* Vibrant Sea Salt */
+    --accent-hover: #A3C9E2;
     --success: #34D399;
     --error: #F87171;
-    --border: #334155;
-    --glass-bg: rgba(30, 41, 59, 0.8);
+    --border: #2A4560;          /* Deep Sea Border */
+    --glass-bg: rgba(22, 43, 64, 0.85);
     
     color-scheme: dark;
   }

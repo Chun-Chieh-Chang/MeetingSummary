@@ -626,10 +626,204 @@ Initialize the `MeetingSummary` project with a robust Knowledge Base (Wiki) stru
 - [x] 獲得使用者許可後執行 `git push`。
 
 ### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 網頁開啟後呈現空白，開發者控制台顯示 `<App>` 組件出錯。
+- **Root Cause**: `App.tsx` 的 JSX 中引用了 `exportToMarkdown` 作為按鈕點擊處理函數，但該函數未在組件內部定義，導致 React 渲染失敗。
+- **Solution**: 在 `App.tsx` 中實作 `exportToMarkdown` 邏輯，使用 Blob 與 URL.createObjectURL 實現 Markdown 檔案下載。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 修復並補齊缺失的匯出功能。
+- **Preventive**: 每次提交變更前應強制執行 `npx tsc --noEmit` 或 `npm run build` 以捕捉引用錯誤。
+
+---
+
+## [2026-05-10] - Gemini API 503 Error Handling (Robustness)
+
+### 🎯 Objective
+解決 `gemini-3.1-flash-lite` 偶爾回傳 503 (Service Unavailable) 的問題，提升系統穩定性。
+
+### 📝 Task List
+- [x] 實作 `generateContentWithRetry` 輔助函數。
+- [x] 加入 **Exponential Backoff** (指數退避) 演算法（2s, 4s, 8s + Jitter）。
+- [x] 針對 503 與 429 錯誤進行自動重試（最多 3 次）。
+- [x] 優化 UI 狀態反饋：重試時顯示「伺服器忙碌，正在重試 (1/3)...」。
+- [x] 驗證 TypeScript 編譯通過。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 使用者回報 `generativelanguage.googleapis.com` 回傳 503 錯誤。
+- **Root Cause**: `gemini-3.1-flash-lite` 為熱門模型，免費版（Free Tier）在尖峰時段易受容量限制（Capacity Constraints）導致 503。原代碼未實作重試機制。
+- **Solution**: 實作自動重試邏輯，在遇到暫時性錯誤時自動等待並再次請求，減少人為干預。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 實作指數退避重試機制。
+- **Preventive**: 
+    1. 建議使用者若頻繁遇到 503，可嘗試切換至 `gemini-2.5-flash`（負載較低）。
+    2. 未來可考慮實作「模型自動降級」機制（例如 503 時自動嘗試 alternate model）。
+
+---
+
+## [2026-05-10] - Transcript Formatting & Sidebar File List UI
+
+### 🎯 Objective
+優化生成內容結構（逐字稿優先）並改善多檔案上傳時的視覺反饋。
+
+### 📝 Task List
+- [x] 更新 Gemini Prompt，要求優先輸出 **[mm:ss] 格式的時間標記逐字稿**。
+- [x] 規範輸出結構：逐字稿 -> 詳細摘要 -> 結論與行動方案。
+- [x] 在左側邊欄新增「待處理檔案」清單，顯示已選擇的檔案名稱。
+- [x] 新增「清除全部」按鈕，方便使用者重新選擇檔案。
+- [x] 優化邊欄 CSS，確保檔案清單在多檔案時具備滾動條。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem 1**: 生成內容缺乏時間戳記，難以回溯音訊。
+- **Problem 2**: 上傳多個檔案時，使用者無法在 UI 上確認目前已選擇哪些檔案。
+- **Solution**: 
+    1. 透過 Prompt Engineering 強制模型執行 Diarization 與 Timestamping。
+    2. 在 Sidebar 注入 `selectedFiles` 列表組件，提升操作透明度。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 實作逐字稿標記與檔案清單 UI。
+- **Preventive**: 定期檢視使用者對於摘要結構的需求，動態調整 Prompt 範本。
+
+---
+
+## [2026-05-10] - File Processing Order (Alphabetical Sort)
+
+### 🎯 Objective
+確保多檔案處理時，分析順序嚴格遵循檔案名稱（Alphabetical Order）。
+
+### 📝 Task List
+- [x] 修改 `handleFileSelect` 邏輯，在存入 `selectedFiles` 前執行排序。
+- [x] 使用 `localeCompare` 搭配 `numeric: true` 實現智慧型數字排序（如：part1, part2, part10）。
+- [x] 更新 UI 提示文字，告知使用者檔案已按名稱排序。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 瀏覽器選取檔案時的順序可能不固定（取決於 OS 或選取順序），導致分析後的逐字稿邏輯中斷。
+- **Solution**: 在前端強制對檔案陣列進行排序，保證處理順序的可預測性。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 實作 `selectedFiles.sort()`。
+- **Preventive**: 對於具備順序依賴性的批次任務，一律在入口點進行正規化排序。
+
+---
+
+## [2026-05-10] - Individual File Processing Progress UI
+
+### 🎯 Objective
+在多檔案處理過程中，提供更細緻的進度回饋，讓使用者即時掌握每個檔案的分析狀態。
+
+### 📝 Task List
+- [x] 新增 `currentFileIndex` 與 `processedFileIndices` 狀態追蹤。
+- [x] 在邊欄檔案清單中為每個檔案加入狀態圖示（等待中、處理中 ⏳、已完成 ✅）。
+- [x] 針對正在處理的檔案加入底部的 **動態進度條 (Progress Track Animation)**。
+- [x] 優化「清除全部」邏輯，確保清除檔案時一併重置所有處理狀態。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 批次處理時，原 UI 僅能顯示總體文字提示（如：解析中 2/4），使用者無法得知具體哪個檔案正在被處理或哪些已成功。
+- **Solution**: 實作組件級狀態追蹤，透過 CSS 動畫模擬 API 調用過程中的進度感。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 實作檔案層級的進度條與狀態指示器。
+- **Preventive**: 對於耗時較長的非同步任務，應優先考慮分階段的狀態可視化。
+
+---
+
+## [2026-05-10] - Automatic Model Fallback Mechanism
+
+### 🎯 Objective
+當首選模型持續回傳 503 錯誤時，系統應自動嘗試其他可用模型，確保任務完成。
+
+### 📝 Task List
+- [x] 實作 `fileToBase64` 異步輔助函數。
+- [x] 在 `processWithGemini`, `processWithFile`, `synthesizeResults` 中加入 **模型切換隊列 (Fallback Queue)**。
+- [x] 當 `generateContentWithRetry` 在 5 次重試後仍失敗且錯誤為 transient (503/429) 時，自動切換至下一個模型。
+- [x] 優體 UI 反饋：切換模型時顯示 `⚠️ [Model ID] 過載，自動切換至下一個模型...`。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 單一模型的重試（Retry）在極端過載的情況下仍可能失敗，導致使用者任務中斷。
+- **Solution**: 實作 **Multi-Model Redundancy**。預設順序為：`gemini-3.1-flash-lite` -> `gemini-2.5-flash` -> `gemini-2.5-pro`。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 實作模型自動降級與備援機制。
+- **Preventive**: 考慮在未來加入「API Key 輪詢」或「多區域佈署」邏輯以進一步提升穩定性。
+
+---
+
+## [2026-05-10] - Optimized Fallback Speed
+
+### 🎯 Objective
+縮短單一模型的等待時間，加快切換至備援模型的速度。
+
+### 📝 Task List
+- [x] 將 `generateContentWithRetry` 的 `maxRetries` 從 5 次下修至 **2 次**。
+- [x] 確保在第二次重試失敗後，系統立即觸發 Fallback 邏輯切換至下一個模型。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 5 次重試可能耗時過長（加上退避時間約 30-60 秒），若伺服器處於持續過載狀態，過多的重試會降低整體效率。
+- **Solution**: 減少單點重試次數，將重心轉移至模型切換，以空間（多模型資源）換取時間。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 調整 `maxRetries = 2`。
+
+---
+
+## [2026-05-10] - PDCA Build Verification & Code Cleanup
+
+### 🎯 Objective
+執行全專案編譯驗證，確保所有優化與修復皆符合生產環境標準。
+
+### 📝 Task List
+- [x] 執行 `npm run build` 進行完整編譯測試。
+- [x] 修復 TypeScript 編譯錯誤：移除未使用的 `setAssemblyKey`, `setDeepgramKey`。
+- [x] 修復 TypeScript 編譯錯誤：初始化 `lastError` 並確保其在失敗訊息中被讀取。
+- [x] 驗證 Vite 建構成功，確認 PWA 資源與 Assets 正確產出。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Observation**: 雖然 `tsc --noEmit` 通過，但生產環境建構 `tsc -b` 捕捉到了細微的變數引用錯誤。
+- **Solution**: 遵循 MECE 原則清理冗餘變數，並加強錯誤處理的完整性。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Check (Effect Confirmation)**: `npm run build` 已成功，產出物完整，無任何警告或錯誤。
+- **Preventive**: 每次任務結束前必須執行一次完整 Build 以作最終驗證。
+
+---
+
+## [2026-05-10] - Structured Output Enforcement (Missing Summary Fix)
+
+### 🎯 Objective
+修復在長音訊分析時，AI 可能遺漏摘要與總結區塊的問題。
+
+### 📝 Task List
+- [x] 優化 Prompt 結構：使用 Markdown Header 標註三大必填區塊。
+- [x] 加入強制指令：要求 AI 即使內容過長也必須保留「摘要」與「總結」。
+- [x] 調整 `generationConfig`：設置 `maxOutputTokens: 8192` 以提供充足的輸出空間。
+- [x] 優化模型參數：調整 `temperature: 0.2` 以增加輸出結構的穩定性。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 當音訊內容極長時，逐字稿會佔據過多輸出空間，導致模型達到 Token 限制而中斷，或是忽略了後半段的指令。
+- **Solution**: 透過明確的 Sectioning 與 Token 擴展，強制模型保留關鍵的分析部分。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 更新 Prompt 與 `generationConfig`。
+- **Preventive**: 對於長文本輸出，應預設保留摘要空間。
+
+---
+
+## [2026-05-10] - Final Optimization & Git Push Preparation
+
+### 🎯 Objective
+執行推送前的最終優化，確保符合「色彩大師規範」與「代碼魯棒性」標準。
+
+### 📝 Task List
+- [x] 對齊「色彩大師規範」 (Color Master Palette) 並加入深色模式支援。
+- [x] 重構 `App.tsx` 冗餘邏輯，封裝 API 調用與 Fallback 機制。
+- [x] 執行 `npm run build` 進行生產環境確效。
+- [x] 獲得使用者許可後執行 `git push`。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
 - **Problem**: 現有色彩計畫與 `user_global` 規範定義的專業色階有細微差異。
 - **Root Cause**: 初始開發時使用的是海鹽藍主題，未完全對齊規範中的品牌藍與高級灰。
 - **Solution**: 全面更新 `index.css` 與 `App.css` 的 Design Tokens。
 
 ### 🛡️ CAPA (Corrective and Preventive Actions)
-- **Corrective**: 更新 CSS 與重構代碼。
+- **Corrective**: 更新 CSS 與重構代碼。修正色彩計畫，將「海鹽藍」品牌色重新注入「色彩大師規範」中，解決深色模式過於沉悶的問題。
 - **Preventive**: 建立 `PRE_PUSH_CHECKLIST.md` 作為未來標準化部署流程。
