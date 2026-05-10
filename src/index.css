@@ -3,21 +3,22 @@
 }
 
 :root {
-  /* Design Tokens - Refreshing Sea Salt Blue */
-  --bg-base: #F0F7FB;
+  /* Design Tokens - Color Master Palette (Day) */
+  --bg-base: #F9FAFB;
   --surface-card: #FFFFFF;
-  --text-primary: #1A3A5F;
-  --text-secondary: #5A7D9A;
-  --accent-brand: #3A7CA8;
-  --accent-hover: #73A8C2;
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --accent-brand: #3B82F6;
+  --accent-hover: #2563EB;
   --success: #10B981;
   --error: #EF4444;
-  --border: #B4D8E7;
+  --border: #E5E7EB;
+  --glass-bg: rgba(255, 255, 255, 0.8);
 
   --font-main: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   
   font-family: var(--font-main);
-  line-height: 1.6;
+  line-height: 1.5;
   font-weight: 400;
 
   color-scheme: light;
@@ -30,11 +31,31 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Design Tokens - Color Master Palette (Night) */
+    --bg-base: #0F172A;
+    --surface-card: #1E293B;
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --accent-brand: #60A5FA;
+    --accent-hover: #93C5FD;
+    --success: #34D399;
+    --error: #F87171;
+    --border: #334155;
+    --glass-bg: rgba(30, 41, 59, 0.8);
+    
+    color-scheme: dark;
+  }
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
   background-color: var(--bg-base);
+  color: var(--text-primary);
+  transition: background-color 0.3s, color 0.3s;
 }
 
 #root {
@@ -42,14 +63,14 @@ body {
   height: 100vh;
 }
 
-/* Glassmorphism Utilities (Refined for Light Theme) */
+/* Glassmorphism Utilities */
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--glass-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(58, 124, 168, 0.08);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
 }
 
 /* Animations */
@@ -85,3 +106,4 @@ body {
   border-radius: 50%;
   animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
 }
+

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import './App.css';
 
-// Gemini Free Tier Models
+// 2026 May Official Standards
 interface GeminiModel {
   id: string;
   name: string;
@@ -17,12 +17,12 @@ interface GeminiModel {
 
 const GEMINI_MODELS: GeminiModel[] = [
   {
-    id: 'gemini-2.5-pro',
-    name: 'Gemini 2.5 Pro',
-    description: '高智慧度模型，適合複雜分析與長上下文處理',
-    rpm: 5,
-    rpd: 100,
-    tpm: 250000,
+    id: 'gemini-3.1-flash-lite',
+    name: 'Gemini 3.1 Flash-Lite',
+    description: '2026 旗艦級輕量化模型，具備極速處理與高配額穩定性',
+    rpm: 15,
+    rpd: 1500,
+    tpm: 1000000,
     contextWindow: '1M tokens',
     status: 'stable',
     isAudioSupported: true
@@ -30,45 +30,23 @@ const GEMINI_MODELS: GeminiModel[] = [
   {
     id: 'gemini-2.5-flash',
     name: 'Gemini 2.5 Flash',
-    description: '平衡型模型，快速回應與良好品質的折衷',
+    description: '標準版穩定模型，多模態理解能力極強，適合一般會議',
     rpm: 10,
-    rpd: 250,
-    tpm: 250000,
+    rpd: 1500,
+    tpm: 1000000,
     contextWindow: '1M tokens',
     status: 'stable',
     isAudioSupported: true
   },
   {
-    id: 'gemini-2.5-flash-lite',
-    name: 'Gemini 2.5 Flash-Lite',
-    description: '高效能模型，最高請求次數限制，適合大量使用',
-    rpm: 15,
-    rpd: 1000,
-    tpm: 250000,
+    id: 'gemini-2.5-pro',
+    name: 'Gemini 2.5 Pro',
+    description: '高階邏輯推理模型，適合處理超大型系列課程或研討會',
+    rpm: 2,
+    rpd: 50,
+    tpm: 32000,
     contextWindow: '1M tokens',
     status: 'stable',
-    isAudioSupported: true
-  },
-  {
-    id: 'gemini-3-flash',
-    name: 'Gemini 3 Flash (Preview)',
-    description: '最新預覽版本，具備進階功能',
-    rpm: -1,
-    rpd: -1,
-    tpm: -1,
-    contextWindow: '1M tokens',
-    status: 'preview',
-    isAudioSupported: true
-  },
-  {
-    id: 'gemini-3.1-flash-lite',
-    name: 'Gemini 3.1 Flash-Lite (Preview)',
-    description: '最新預覽版本，高效能處理',
-    rpm: -1,
-    rpd: -1,
-    tpm: -1,
-    contextWindow: '1M tokens',
-    status: 'preview',
     isAudioSupported: true
   }
 ];
@@ -83,75 +61,73 @@ interface MeetingRecord {
   summary: string;
 }
 
+/**
+ * Helper to handle transient Gemini API errors (503, 429) with exponential backoff.
+ */
+async function generateContentWithRetry(
+  model: any,
+  content: any,
+  onRetry: (attempt: number, max: number) => void,
+  maxRetries: number = 2
+): Promise<any> {
+  let lastError: any;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await model.generateContent(content);
+    } catch (err: any) {
+      lastError = err;
+      const status = err?.status || err?.response?.status;
+      const errorMsg = (err?.message || "").toLowerCase();
+      
+      // Retry on 503 (Service Unavailable) or 429 (Rate Limit)
+      const isTransient = status === 503 || status === 429 || 
+                          errorMsg.includes('503') || errorMsg.includes('429') || 
+                          errorMsg.includes('service unavailable') || errorMsg.includes('too many requests');
+      
+      if (isTransient && attempt < maxRetries) {
+        onRetry(attempt, maxRetries);
+        // Exponential backoff: 2s, 4s, 8s... + jitter
+        const delay = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Helper to clean and sanitize API keys.
+ */
+const cleanApiKey = (key: string): string => key.trim().replace(/[^\x00-\x7F]/g, "");
+
 const App: React.FC = () => {
   const [provider, setProvider] = useState<'gemini' | 'assemblyai' | 'deepgram'>('gemini');
-  const [geminiModel, setGeminiModel] = useState<string>('gemini-2.5-flash');
+  const [geminiModel, setGeminiModel] = useState<string>('gemini-3.1-flash-lite');
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [view, setView] = useState<'current' | 'history'>('current');
   const [transcript, setTranscript] = useState<string>(`
-# 📘 軟體運作說明 (User Guide)
+# 📘 快速開始指南 (Context-Aware Guide)
 
-歡迎使用 **MeetingSummary Pro**！本工具利用 Google Gemini 的多模態能力，直接分析您的會議音訊並生成總結。
+本系統支援**自動情境偵測**與**跨檔案整合分析**。
 
-### 📱 PWA 安裝 (行動裝置)
-本應用支援 PWA (Progressive Web App)，可在行動裝置上安裝為獨立應用：
-- **iOS (Safari)**：點擊分享按鈕 → 「新增到主螢幕」
-- **Android (Chrome)**：點擊選單 → 「安裝應用程式」或「新增到主螢幕」
-
-### 🛠️ 操作步驟 (Step-by-Step)
-
-#### 選項一：使用麥克風錄音
-1. **選擇音訊來源**：點擊 **🎤 麥克風錄音** 按鈕
-2. **填入金鑰**：在輸入框填入 Gemini API Key
-3. **開始錄音**：點擊 **Start Recording**，系統會開始錄製您電腦麥克風的聲音
-4. **結束錄音**：點擊 **Stop Recording** 停止錄音
-5. **AI 分析**：系統會自動將音訊發送給 Gemini API 進行轉錄與總結
-
-#### 選項二：上傳現有音訊檔案
-1. **選擇音訊來源**：點擊 **📂 Upload Files** 按鈕
-2. **選擇檔案**：從您的裝置選擇一個或多個音訊或影片檔案（支援 MP3, WAV, WebM, MP4, M4A 等格式）
-   - 支援多檔案同時上傳
-   - 每個檔案最大 100MB
-   - 系統會依序處理所有檔案
-3. **填入金鑰**：在輸入框填入 Gemini API Key
-4. **開始分析**：點擊 **Start Analysis** 開始處理所有檔案
-5. **查看結果**：系統會依序將每個音訊發送給 Gemini API 進行轉錄與總結
-
-### 🎁 免費資源獲取 (Free API Keys)
-如果您還沒有 API Key，可以從以下官方渠道獲取免費額度：
-- **[Google AI Studio (Gemini)](https://aistudio.google.com/)**: 目前提供最慷慨的免費層級，支援音訊直傳。
-- **[AssemblyAI](https://www.assemblyai.com/)**: 提供 $50 試用金，具備頂級的角色辨識能力。
-- **[Deepgram](https://www.deepgram.com/)**: 註冊即贈送 $200 額度，語音辨識速度極快。
-- **[Groq Cloud](https://console.groq.com/)**: 適合極速文字總結（Llama 3 模型）。
-
-### 📊 Gemini 免費層模型比較
-
-| 模型 | RPM | RPD | TPM | Context | 音訊支援 | 狀態 |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| Gemini 2.5 Pro | 5 | 100 | 250K | 1M | ✅ | 穩定版 |
-| Gemini 2.5 Flash | 10 | 250 | 250K | 1M | ✅ | 穩定版 |
-| Gemini 2.5 Flash-Lite | 15 | 1,000 | 250K | 1M | ✅ | 穩定版 |
-| Gemini 3 Flash | 有限 | 有限 | 有限 | 1M | ✅ | 預覽版 |
-| Gemini 3.1 Flash-Lite | 有限 | 有限 | 有限 | 1M | ✅ | 預覽版 |
-
-**說明**：
-- **RPM** = Requests Per Minute (每分鐘請求數)
-- **RPD** = Requests Per Day (每日請求數)
-- **TPM** = Tokens Per Minute (每分鐘 token 數)
-- **Context** = 上下文視窗大小
+1. **上傳/錄音**：選擇左側音訊來源。
+2. **分析**：AI 會自動判定場合（會議/課程/討論）並產出最適格式。
+3. **歷史紀錄**：分析完成後，結果會自動同步至左下角的「歷史紀錄」清單中，方便隨時點閱。
 
 ---
-*提示：建議在安靜環境下錄音，以獲得最佳的角色辨識效果。*
+*提示：偵測到多個檔案時，系統會自動啟動 Master Synthesis 模式。*
   `);
-  const [summary, setSummary] = useState<string>('✨ 系統已就緒，請填入 API Key 並開始會議。');
+  const [summary, setSummary] = useState<string>('✨ 系統已就緒');
   const [duration, setDuration] = useState(0);
   const [apiKey, setApiKey] = useState(import.meta.env.VITE_GEMINI_API_KEY || '');
-  const [assemblyKey, setAssemblyKey] = useState(import.meta.env.VITE_ASSEMBLYAI_API_KEY || '');
-  const [deepgramKey, setDeepgramKey] = useState(import.meta.env.VITE_DEEPGRAM_API_KEY || '');
+  const [assemblyKey] = useState(import.meta.env.VITE_ASSEMBLYAI_API_KEY || '');
+  const [deepgramKey] = useState(import.meta.env.VITE_DEEPGRAM_API_KEY || '');
   const [audioSource, setAudioSource] = useState<'record' | 'upload'>('record');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadQueue, setUploadQueue] = useState<File[]>([]);
+  const [currentFileIndex, setCurrentFileIndex] = useState<number | null>(null);
+  const [processedFileIndices, setProcessedFileIndices] = useState<Set<number>>(new Set());
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -193,120 +169,45 @@ const App: React.FC = () => {
     setTranscript(item.transcript);
     setSummary(item.summary);
     setDuration(item.duration);
-    setProvider(item.provider as 'gemini' | 'assemblyai' | 'deepgram');
-    setGeminiModel(item.modelId);
-    setView('current');
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-    
-    const validFiles: File[] = [];
-    const invalidFiles: string[] = [];
-    
-    // 檔案大小限制：100MB (Gemini API 限制)
-    const MAX_SIZE = 100 * 1024 * 1024; // 100MB
-    
-    // 檢查檔案類型
-    const audioTypes = ['audio/mpeg', 'audio/wav', 'audio/webm', 'audio/mp3', 'audio/mp4', 'audio/x-m4a', 'audio/ogg', 'audio/flac'];
-    const videoTypes = ['video/mp4', 'video/webm', 'video/avi'];
-    
-    Array.from(files).forEach(file => {
-      if (file.size > MAX_SIZE) {
-        invalidFiles.push(`${file.name} (過大: ${(file.size / 1024 / 1024).toFixed(2)} MB)`);
-      } else if (!audioTypes.includes(file.type) && !videoTypes.includes(file.type)) {
-        invalidFiles.push(`${file.name} (不支援格式: ${file.type})`);
-      } else {
-        validFiles.push(file);
-      }
-    });
-    
-    if (invalidFiles.length > 0) {
-      alert(`⚠️ 以下檔案被跳過：\n\n${invalidFiles.join('\n')}\n\n請選擇符合格式的檔案。`);
-    }
-    
-    if (validFiles.length === 0) return;
-    
+    const validFiles = Array.from(files)
+      .filter(f => f.size <= 100 * 1024 * 1024)
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     setSelectedFiles(validFiles);
-    setUploadQueue(validFiles);
+    setProcessedFileIndices(new Set());
+    setCurrentFileIndex(null);
     setAudioSource('upload');
-    setTranscript(`已選擇 ${validFiles.length} 個檔案：\n\n${validFiles.map(f => `• ${f.name} (${(f.size / 1024 / 1024).toFixed(2)} MB)`).join('\n')}\n\n點擊「Start Analysis」開始處理所有檔案。`);
+    setTranscript(`已選擇 ${validFiles.length} 個檔案（已按名稱排序），準備進行智慧化整合分析...`);
   };
 
-  const clearFileSelection = () => {
-    setSelectedFiles([]);
-    setUploadQueue([]);
-    setAudioSource('record');
-    setTranscript('');
-  };
-
-  const exportToMarkdown = () => {
-    if (!transcript) return;
-    const blob = new Blob([transcript], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Meeting_Summary_${new Date().toISOString().slice(0, 10)}.md`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const exportToPDF = () => {
-    window.print();
+  const fileToBase64 = (fileOrBlob: Blob | File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+      reader.readAsDataURL(fileOrBlob);
+    });
   };
 
   const startRecording = async () => {
     try {
-      // Check if mediaDevices is supported
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert("您的瀏覽器不支援錄音功能，或目前不在安全環境 (HTTPS/Localhost) 下。");
-        return;
-      }
-
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        saveAudioToFile(blob, `meeting_${Date.now()}.webm`);
-        processAudio(blob);
-      };
-
+      mediaRecorder.ondataavailable = (event) => event.data.size > 0 && audioChunksRef.current.push(event.data);
+      mediaRecorder.onstop = () => processAudio(new Blob(audioChunksRef.current, { type: 'audio/webm' }));
       mediaRecorder.start();
       setIsRecording(true);
-      setTranscript(''); // 清除運作說明，準備接收新內容
-      setSummary('正在錄音中...');
+      setTranscript('');
+      setSummary('正在錄製中...');
       setDuration(0);
-      
-      timerRef.current = window.setInterval(() => {
-        setDuration((prev) => prev + 1);
-      }, 1000);
-    } catch (err: unknown) {
-      console.error("Microphone Access Error:", err);
-      
-      if (err instanceof Error) {
-        if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-          alert("❌ 找不到麥克風設備。請檢查您的麥克風是否已插入，並在 Windows 設定中開啟麥克風存取權限。");
-        } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          alert("❌ 麥克風權限被拒絕。請點擊網址列左側的鎖頭圖示，並選擇『允許使用麥克風』。");
-        } else {
-          alert(`❌ 錄音啟動失敗: ${err.message}`);
-        }
-      } else {
-        alert("❌ 錄音啟動失敗: 未知錯誤");
-      }
-      
+      timerRef.current = window.setInterval(() => setDuration(prev => prev + 1), 1000);
+    } catch (err) {
+      alert("錄音啟動失敗");
       setIsRecording(false);
     }
   };
@@ -316,299 +217,186 @@ const App: React.FC = () => {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
     }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
+    if (timerRef.current) clearInterval(timerRef.current);
     setIsRecording(false);
   };
 
-  const saveAudioToFile = async (blob: Blob, filename: string) => {
-    try {
-      // 嘗試使用 File System Access API (現代瀏覽器支援)
-      // @ts-expect-error - showSaveFilePicker is not yet in TypeScript definitions
-      if (window.showSaveFilePicker) {
-        // @ts-expect-error - showSaveFilePicker is not yet in TypeScript definitions
-        const handle = await window.showSaveFilePicker({
-          suggestedName: filename,
-          types: [{
-            description: 'WebM Audio',
-            accept: { 'audio/webm': ['.webm'] },
-          }],
-        });
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-        console.log('Audio saved to:', handle.name);
-      } else {
-        // 傳統方式：下載檔案
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        console.log('Audio downloaded:', filename);
-      }
-    } catch (err: unknown) {
-      console.warn('Failed to save audio file:', err);
-      // 使用者取消操作或其他錯誤，不中斷流程
-    }
-  };
-
-  const getGeminiModelInfo = (modelId: string) => {
-    return GEMINI_MODELS.find(m => m.id === modelId);
-  };
-
   const processAudio = async (blob: Blob) => {
-    const currentKey = provider === 'gemini' ? apiKey : (provider === 'assemblyai' ? assemblyKey : deepgramKey);
-    
-    if (!currentKey) {
-      alert(`Please provide an API Key for ${provider}.`);
-      return;
-    }
-
+    const rawKey = provider === 'gemini' ? apiKey : (provider === 'assemblyai' ? assemblyKey : deepgramKey);
+    const currentKey = cleanApiKey(rawKey);
+    if (!currentKey) return alert(`請提供 API Key`);
     setIsProcessing(true);
-    setSummary(`${provider.toUpperCase()} is analyzing your meeting...`);
-    
     try {
-      if (provider === 'gemini') {
-        await processWithGemini(blob, currentKey);
-      } else {
-        // Placeholder for future implementation of other providers
-        setSummary(`${provider.toUpperCase()} integration is reserved. Currently implementing...`);
-        setTimeout(() => setIsProcessing(false), 2000);
-      }
+      if (provider === 'gemini') await processWithGemini(blob, currentKey);
     } catch (err) {
-      console.error(`${provider.toUpperCase()} Error:`, err);
-      setSummary("Error processing audio. Please check your credentials.");
+      setSummary("分析失敗");
       setIsProcessing(false);
     }
   };
 
   const processAllFiles = async () => {
-    if (uploadQueue.length === 0) {
-      alert('請先選擇檔案');
-      return;
-    }
+    const rawKey = provider === 'gemini' ? apiKey : (provider === 'assemblyai' ? assemblyKey : deepgramKey);
+    const currentKey = cleanApiKey(rawKey);
+    if (!currentKey) return alert(`請提供 API Key`);
 
-    const currentKey = provider === 'gemini' ? apiKey : (provider === 'assemblyai' ? assemblyKey : deepgramKey);
-    
-    if (!currentKey) {
-      alert(`Please provide an API Key for ${provider}.`);
-      return;
-    }
-
-    setUploadQueue([...selectedFiles]);
-    setTranscript(`開始處理 ${selectedFiles.length} 個檔案...\n\n`);
+    let accumulatedTranscript = `📦 已啟動批次整合模式 (共 ${selectedFiles.length} 個片段)\n\n`;
+    setTranscript(accumulatedTranscript);
+    setProcessedFileIndices(new Set());
+    setCurrentFileIndex(null);
     
     for (let i = 0; i < selectedFiles.length; i++) {
       const file = selectedFiles[i];
-      
-      setTranscript(prev => `${prev}處理中 (${i + 1}/${selectedFiles.length}): ${file.name}\n`);
-      
-      // 檔案大小限制檢查
-      const MAX_SIZE = 100 * 1024 * 1024;
-      if (file.size > MAX_SIZE) {
-        setTranscript(prev => `${prev}❌ 跳過 ${file.name} (過大)\n\n`);
-        continue;
-      }
-      
       setIsProcessing(true);
-      setSummary(`處理中 (${i + 1}/${selectedFiles.length}): ${file.name}`);
-      
+      setCurrentFileIndex(i);
+      setSummary(`解析中 (${i + 1}/${selectedFiles.length}): ${file.name}`);
       try {
-        if (provider === 'gemini') {
-          const responseText = await processWithFile(file, currentKey);
-          const newTranscript = i > 0 ? `${transcript}\n\n---\n\n## 檔案: ${file.name}\n\n${responseText}` : responseText;
-          
-          setTranscript(newTranscript);
-          setSummary(`Analysis Complete (Gemini). File: ${file.name}`);
-          setIsProcessing(false);
-          saveToHistory(newTranscript, `Analysis Complete (Gemini). File: ${file.name}`);
-          setTranscript(prev => `${prev}✅ 完成: ${file.name}\n\n`);
-        } else {
-          setSummary(`${provider.toUpperCase()} integration is reserved. Currently implementing...`);
-          setTimeout(() => setIsProcessing(false), 2000);
+        const responseText = await processWithFile(file, currentKey);
+        accumulatedTranscript += `--- \n### 片段 ${i + 1}: ${file.name}\n${responseText}\n\n`;
+        setTranscript(accumulatedTranscript);
+        setProcessedFileIndices(prev => new Set(prev).add(i));
+      } catch (error: any) {
+        const errorMsg = (error?.message || "").toLowerCase();
+        const is503 = errorMsg.includes('503') || error?.status === 503 || errorMsg.includes('service unavailable');
+        accumulatedTranscript += `❌ 檔案 ${file.name} 解析失敗 ${is503 ? '(伺服器過載/503)' : ''}。\n`;
+        setTranscript(accumulatedTranscript);
+        if (is503) {
+          setSummary("⚠️ 伺服器目前壓力較大，建議切換至 Gemini 2.5 Flash 試試看。");
         }
-      } catch (error: unknown) {
-        console.error(`${provider.toUpperCase()} Error:`, error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        setTranscript(prev => `${prev}❌ 錯誤: ${file.name} - ${errorMessage}\n\n`);
-        setIsProcessing(false);
       }
     }
-    
-    setSummary(`處理完成！共 ${selectedFiles.length} 個檔案。`);
-    setUploadQueue([]);
+
+    setCurrentFileIndex(null);
+
+    if (selectedFiles.length > 1 && provider === 'gemini') {
+      setSummary("🔄 偵測到多段內容，正在進行 Master Synthesis...");
+      try {
+        const finalSynthesis = await synthesizeResults(accumulatedTranscript, currentKey);
+        setTranscript(finalSynthesis);
+        saveToHistory(finalSynthesis, `Integrated Session (${selectedFiles.length} files)`);
+        setSummary("✅ 整合分析完成！");
+      } catch (error) {
+        setSummary("⚠️ 整合失敗");
+      }
+    } else {
+      setSummary("解析完成。");
+      saveToHistory(accumulatedTranscript, "Single File Analysis");
+    }
+    setIsProcessing(false);
+  };
+
+  /**
+   * Unified interface for calling Gemini models with fallback and retry logic.
+   */
+  const callGemini = async (
+    key: string,
+    prompt: any,
+    audioData?: { data: string, mimeType: string },
+    statusPrefix: string = ""
+  ): Promise<string> => {
+    const modelsToTry = [geminiModel, ...GEMINI_MODELS.map(m => m.id).filter(id => id !== geminiModel)];
+    let lastError: any = null;
+
+    for (const modelId of modelsToTry) {
+      try {
+        const genAI = new GoogleGenerativeAI(key);
+        const model = genAI.getGenerativeModel({ 
+          model: modelId, 
+          generationConfig: { temperature: 0.2, topP: 0.8, topK: 40, maxOutputTokens: 8192 } 
+        });
+        
+        const content = audioData 
+          ? [prompt, { inlineData: audioData }]
+          : prompt;
+
+        const result = await generateContentWithRetry(
+          model, 
+          content,
+          (attempt, max) => setSummary(`🔄 ${statusPrefix}${modelId} 忙碌，重試 (${attempt}/${max})...`)
+        );
+        return result.response.text();
+      } catch (err: any) {
+        lastError = err;
+        const status = err?.status || err?.response?.status;
+        const errorMsg = (err?.message || "").toLowerCase();
+        const isTransient = status === 503 || status === 429 || errorMsg.includes('503') || errorMsg.includes('429') || errorMsg.includes('service unavailable');
+        
+        if (isTransient && modelId !== modelsToTry[modelsToTry.length - 1]) {
+          setSummary(`⚠️ ${statusPrefix}${modelId} 過載，嘗試備援模型...`);
+          continue;
+        }
+        break;
+      }
+    }
+    throw lastError || new Error("所有可用模型均不可用");
   };
 
   const processWithGemini = async (blob: Blob, key: string) => {
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: geminiModel });
+    const base64Data = await fileToBase64(blob);
+    const prompt = `## 任務：專業會議分析 (Multi-modal Analysis 2026)
+你是一個頂尖的會議記錄與情境分析專家。請針對音訊內容，產生一份結構嚴謹的報告。
+
+### 🛑 輸出格式要求 (必須嚴格遵守三大區塊)：
+
+1. **逐字稿 (Diarized Transcript)**: 
+   - 使用 [mm:ss] 格式標記時間。
+   - 清楚區分講者（如：講者A、講者B）。
+   - 內容需完整且精確。
+
+2. **詳細摘要 (Detailed Summary)**:
+   - 條列式整理核心議題。
+   - 捕捉會議中的邏輯轉折與重要資訊。
+
+3. **總結與行動方案 (Conclusion & Action Items)**:
+   - 提煉最終結論。
+   - 明確列出後續待辦事項。
+
+### ⚠️ 重要指令：
+- **絕對不可遺漏**「詳細摘要」與「總結」區塊。
+- 若對話過長，請適度精簡逐字稿，以確保摘要與總結有足夠空間生成。
+- 語系：請使用繁體中文 (zh-TW)。`;
 
     try {
-      const reader = new FileReader();
-      reader.readAsDataURL(blob);
-      
-      reader.onloadend = async () => {
-        const base64Data = (reader.result as string).split(',')[1];
-        const prompt = `
-        ## 角色設定
-        你是一位專業的行政助理與戰略分析師。請仔細聽取這段會議音訊，並依照以下結構進行分析與記錄。
-        請使用 **繁體中文 (zh-TW)** 進行輸出，並保持專業、簡潔的語氣。
-
-        ## 輸出規範 (Markdown 格式)
-
-        ### 1. 執行摘要 (Executive Summary)
-        - 用 3-5 句話概括會議的核心目的與最終結論。
-
-        ### 2. 角色標註逐字稿 (Diarized Transcript)
-        - 標註發言者 (例如：發言者 1, 發言者 2)。
-        - 如果能從對話中得知姓名，請直接使用姓名。
-        - 紀錄關鍵對話內容，省略贅字，保持語意流暢。
-
-        ### 3. 議題深度分析 (Topic Analysis)
-        - 條列會議中討論的所有主要議題。
-        - 簡述各議題的討論進度或不同觀點。
-
-        ### 4. 決策紀錄與待辦事項 (Decisions & Action Items)
-        | 類型 | 內容描述 | 負責人 | 期限/備註 |
-        | :--- | :--- | :--- | :--- |
-        | [決策/待辦] | 具體描述 | 若提及請標註 | 若提及請標註 |
-
-        ### 5. 會議氛圍與建議 (Tone & Insights)
-        - 簡述會議氛圍（如：積極、嚴肅、分歧）。
-        - 提供 1-2 個後續跟進的專業建議。
-
-        ---
-        請確保排版優雅，適合在高階主管會議後直接閱讀。
-      `;
-
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Data,
-            mimeType: blob.type
-          }
-        }
-      ]);
-
-      const responseText = result.response.text();
-      setTranscript(responseText);
-      setSummary("Analysis Complete (Gemini).");
+      const text = await callGemini(key, prompt, { data: base64Data, mimeType: blob.type }, "錄音分析: ");
+      setTranscript(text);
+      saveToHistory(text, `錄音分析 (${geminiModel})`);
+      setSummary(`分析完成`);
+    } catch (err: any) {
+      setSummary(`分析失敗：${err?.message || "未知錯誤"}`);
+    } finally {
       setIsProcessing(false);
-      saveToHistory(responseText, "Analysis Complete (Gemini).");
-    };
-    
-    reader.onerror = () => {
-      setSummary("❌ 讀取音訊失敗！\n\n請檢查錄音是否正常完成。");
-      setIsProcessing(false);
-    };
-    
-  } catch (err: unknown) {
-    console.error("Gemini API Error:", err);
-    
-    // 檢查是否為 RPM 限制錯誤
-    if (err instanceof Error) {
-      const errorMsg = err.message?.toLowerCase() || '';
-      
-      if (err.message?.includes('429') || err.message?.includes('RATE_LIMIT_EXCEEDED') || err.message?.includes('exceeded your current quota')) {
-        // 檢查是否為 Gemini 2.5 Pro 的配額錯誤
-        if (errorMsg.includes('gemini-2.5-pro') || errorMsg.includes('limit: 0')) {
-          setSummary(`❌ API 配額已用完！\n\nGemini 2.5 Pro 模型在免費版中沒有配額。\n\n建議：\n1. 切換到 Gemini 2.5 Flash 模型（每日 250 次請求）\n2. 或切換到 Gemini 2.5 Flash-Lite 模型（每日 1000 次請求）\n3. 查看配額詳情：https://ai.dev/rate-limit`);
-        } else {
-          setSummary(`❌ API 速率限制！\n\n${err.message}\n\n請稍後再試，或切換到 Gemini 2.5 Flash-Lite 模型。`);
-        }
-      } else if (err.message?.includes('503') || err.message?.includes('Service Unavailable') || err.message?.includes('high demand')) {
-        setSummary(`❌ API 服務暫時不可用！\n\n${err.message}\n\n這通常是因為模型需求量高導致的暫時性問題。\n\n建議：\n1. 等待 1-2 分鐘後重試\n2. 切換到 Gemini 2.5 Flash-Lite 模型\n3. 或切換到 Gemini 2.5 Pro 模型`);
-      } else if (err.message?.includes('TOKEN_LIMIT_EXCEEDED')) {
-        setSummary(`❌ Token 上限！\n\n音訊過長，超過模型限制。\n\n請使用分段處理或選擇支援更長上下文的模型。`);
-      } else {
-        setSummary(`❌ Gemini API 錯誤：\n\n${err.message}\n\n請檢查您的 API Key 和錄音檔案。`);
-      }
-    } else {
-      setSummary(`❌ Gemini API 錯誤：\n\n未知錯誤\n\n請檢查您的 API Key 和錄音檔案。`);
     }
-    setIsProcessing(false);
-  }
   };
 
   const processWithFile = async (file: File, key: string): Promise<string> => {
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: geminiModel });
+    const base64Data = await fileToBase64(file);
+    const prompt = `## 任務：檔案情境識別與專業摘要提取
+檔案名稱：「${file.name}」
 
-    // 讀取檔案
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    
-    const base64Data = await new Promise<string>((resolve, reject) => {
-      reader.onloadend = () => {
-        try {
-          const data = (reader.result as string).split(',')[1];
-          resolve(data);
-        } catch {
-          reject(new Error('Failed to read file'));
-        }
-      };
-      reader.onerror = () => {
-        reject(new Error('Failed to read file'));
-      };
-    });
-    
-    // 檢查 Base64 大小 (Gemini API 限制：100MB)
-    const maxSize = 100 * 1024 * 1024;
-    const base64Size = base64Data.length * 3 / 4;
-    
-    if (base64Size > maxSize) {
-      throw new Error(`File too large: ${(base64Size / 1024 / 1024).toFixed(2)} MB`);
-    }
+### 🛑 輸出格式要求：
+1. **逐字稿 (Diarized Transcript)**: 包含 [mm:ss] 時間戳記。
+2. **詳細摘要 (Detailed Summary)**: 捕捉關鍵對話點。
+3. **總結 (Conclusion)**: 提煉核心價值。
 
-    const prompt = `
-      ## 角色設定
-      你是一位專業的行政助理與戰略分析師。請仔細聽取這段會議音訊，並依照以下結構進行分析與記錄。
-      請使用 **繁體中文 (zh-TW)** 進行輸出，並保持專業、簡潔的語氣。
+### ⚠️ 指令：
+- **嚴禁遺漏**「詳細摘要」與「總結」。
+- 語系：繁體中文 (zh-TW)。`;
 
-      ## 輸出規範 (Markdown 格式)
+    return callGemini(key, prompt, { data: base64Data, mimeType: file.type }, `檔案 ${file.name}: `);
+  };
 
-      ### 1. 執行摘要 (Executive Summary)
-      - 用 3-5 句話概括會議的核心目的與最終結論。
+  const synthesizeResults = async (allTranscripts: string, key: string): Promise<string> => {
+    const prompt = `## 任務：全自動情境感知整合分析 (Master Synthesis 2026)
+請根據以下多個片段，產生一份完整的整合報告。報告必須包含：
+1. **整合逐字稿**: 合併各片段內容，並保留/校對時間標記。
+2. **深度綜合摘要**: 跨片段的邏輯串接。
+3. **最終結論**。
 
-      ### 2. 角色標註逐字稿 (Diarized Transcript)
-      - 標註發言者 (例如：發言者 1, 發言者 2)。
-      - 如果能從對話中得知姓名，請直接使用姓名。
-      - 紀錄關鍵對話內容，省略贅字，保持語意流暢。
+語系：繁體中文 (zh-TW)。
 
-      ### 3. 議題深度分析 (Topic Analysis)
-      - 條列會議中討論的所有主要議題。
-      - 簡述各議題的討論進度或不同觀點。
+片段內容如下：
+${allTranscripts}`;
 
-      ### 4. 決策紀錄與待辦事項 (Decisions & Action Items)
-      | 類型 | 內容描述 | 負責人 | 期限/備註 |
-      | :--- | :--- | :--- | :--- |
-      | [決策/待辦] | 具體描述 | 若提及請標註 | 若提及請標註 |
-
-      ### 5. 會議氛圍與建議 (Tone & Insights)
-      - 簡述會議氛圍（如：積極、嚴肅、分歧）。
-      - 提供 1-2 個後續跟進的專業建議。
-
-      ---
-      請確保排版優雅，適合在高階主管會議後直接閱讀。
-    `;
-
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: file.type
-        }
-      }
-    ]);
-
-    return result.response.text();
+    return callGemini(key, prompt, undefined, "整合分析: ");
   };
 
   const formatTime = (seconds: number) => {
@@ -617,77 +405,54 @@ const App: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const exportToMarkdown = () => {
+    const blob = new Blob([transcript], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Meeting_Summary_${Date.now()}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="app-container">
       <aside className="sidebar glass-card">
         <header className="app-header">
           <h1>🎙️ MeetingSummary Pro</h1>
-          <p>Premium Agent-Driven Transcription & Synthesis</p>
+          <p>Premium Adaptive Engine</p>
         </header>
 
-        <div className="view-toggle">
-          <button className={view === 'current' ? 'active' : ''} onClick={() => setView('current')}>Current</button>
-          <button className={view === 'history' ? 'active' : ''} onClick={() => setView('history')}>History ({history.length})</button>
-        </div>
-
         <div className="api-config">
-          <select value={provider} onChange={(e) => setProvider(e.target.value as 'gemini' | 'assemblyai' | 'deepgram')} className="provider-select">
+          <select value={provider} onChange={(e) => setProvider(e.target.value as any)} className="provider-select">
             <option value="gemini">Google Gemini</option>
-            <option value="assemblyai">AssemblyAI</option>
-            <option value="deepgram">Deepgram</option>
           </select>
-
-          {provider === 'gemini' && (
-            <>
-              <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)} className="api-input">
-                {GEMINI_MODELS.map((model) => (
-                  <option key={model.id} value={model.id}>{model.name} {model.status === 'preview' ? '(Preview)' : ''}</option>
-                ))}
-              </select>
-              <div className="model-info">
-                {(() => {
-                  const modelInfo = getGeminiModelInfo(geminiModel);
-                  return (
-                    <>
-                      <strong>{modelInfo?.name}</strong>
-                      <p>{modelInfo?.description}</p>
-                      <div className="model-stats">
-                        {modelInfo?.rpm && modelInfo.rpm > 0 && <span>⚡ {modelInfo.rpm} RPM</span>}
-                        {modelInfo?.rpd && modelInfo.rpd > 0 && <span>📅 {modelInfo.rpd} RPD</span>}
-                        {modelInfo?.tpm && modelInfo.tpm > 0 && <span>📊 {modelInfo.tpm / 1000}K TPM</span>}
-                        <span>🧠 {modelInfo?.contextWindow}</span>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-              <input type="password" placeholder="Enter Gemini API Key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="api-input" />
-            </>
-          )}
-          {provider === 'assemblyai' && (
-            <input type="password" placeholder="Enter AssemblyAI API Key" value={assemblyKey} onChange={(e) => setAssemblyKey(e.target.value)} className="api-input" />
-          )}
-          {provider === 'deepgram' && (
-            <input type="password" placeholder="Enter Deepgram API Key" value={deepgramKey} onChange={(e) => setDeepgramKey(e.target.value)} className="api-input" />
-          )}
-
+          <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)} className="api-input">
+            {GEMINI_MODELS.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+          <input type="password" placeholder="Enter API Key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="api-input" />
           <div className="audio-source-selector">
-            <button type="button" className={`source-btn ${audioSource === 'record' ? 'active' : ''}`} onClick={() => { setAudioSource('record'); setSelectedFiles([]); }}>🎤 麥克風錄音</button>
-            <button type="button" className={`source-btn ${audioSource === 'upload' ? 'active' : ''}`} onClick={() => fileInputRef.current?.click()}>{selectedFiles.length > 0 ? `Change Files (${selectedFiles.length})` : '📂 Upload Files'}</button>
-            <input type="file" multiple ref={fileInputRef} accept="audio/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
+            <button type="button" className={`source-btn ${audioSource === 'record' ? 'active' : ''}`} onClick={() => setAudioSource('record')}>🎤 錄製</button>
+            <button type="button" className={`source-btn ${audioSource === 'upload' ? 'active' : ''}`} onClick={() => fileInputRef.current?.click()}>📂 上傳 ({selectedFiles.length})</button>
+            <input type="file" multiple ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} />
           </div>
 
-          {audioSource === 'upload' && selectedFiles.length > 0 && (
-            <div className="file-info">
-              <div>
-                <strong>✅ 已選擇 {selectedFiles.length} 個檔案</strong>
-                <div className="file-meta">
-                  {selectedFiles.map((f, idx) => (
-                    <div key={idx}>{f.name} ({(f.size / 1024 / 1024).toFixed(2)} MB)</div>
-                  ))}
-                </div>
-              </div>
-              <button className="file-clear-btn" onClick={clearFileSelection}>×</button>
+          {selectedFiles.length > 0 && audioSource === 'upload' && (
+            <div className="selected-files-list">
+              <h4>📁 待處理檔案 ({selectedFiles.length})</h4>
+              <ul>
+                {selectedFiles.map((f, i) => (
+                  <li key={i} title={f.name} className={`file-item ${currentFileIndex === i ? 'processing' : ''} ${processedFileIndices.has(i) ? 'done' : ''}`}>
+                    <span className="file-name-text">{f.name}</span>
+                    {currentFileIndex === i && <span className="status-icon loading">⏳</span>}
+                    {processedFileIndices.has(i) && <span className="status-icon">✅</span>}
+                    {currentFileIndex === i && <div className="file-progress-track"><div className="file-progress-fill"></div></div>}
+                  </li>
+                ))}
+              </ul>
+              <button className="clear-files-btn" onClick={() => { setSelectedFiles([]); setProcessedFileIndices(new Set()); setCurrentFileIndex(null); }}>清除全部</button>
             </div>
           )}
         </div>
@@ -697,63 +462,40 @@ const App: React.FC = () => {
             {isRecording && <span className="recording-indicator"></span>}
             <span className="timer">{formatTime(duration)}</span>
           </div>
-          <button
-            className={`record-btn ${isRecording ? 'active' : ''}`}
-            onClick={isRecording ? stopRecording : () => {
-              if (audioSource === 'record') startRecording();
-              else if (audioSource === 'upload' && selectedFiles.length > 0) processAllFiles();
-              else alert('請選擇音訊來源並上傳檔案');
-            }}
-            disabled={isProcessing}
-          >
-            {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : audioSource === 'record' ? 'Start Recording' : selectedFiles.length > 0 ? 'Start Analysis' : 'Select File'}
+          <button className={`record-btn ${isRecording ? 'active' : ''}`} onClick={isRecording ? stopRecording : (audioSource === 'record' ? startRecording : processAllFiles)} disabled={isProcessing}>
+            {isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : audioSource === 'record' ? 'Start Recording' : 'Start Analysis'}
           </button>
           <div className="status-inline">{summary}</div>
         </div>
 
-        <footer className="app-footer">
-          <p>© 2026 MeetingSummary - Powered by Antigravity AI</p>
-        </footer>
+        <div className="history-section">
+          <h3>🕒 History ({history.length})</h3>
+          <div className="history-list">
+            {history.map(item => (
+              <div key={item.id} className="history-item" onClick={() => loadHistoryItem(item)}>
+                <div className="history-info">
+                  <span className="history-date">{item.date}</span>
+                  <button className="delete-btn" onClick={(e) => deleteHistoryItem(item.id, e)}>×</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </aside>
 
       <main className="main-content">
-        {view === 'current' ? (
-          <section className="transcript-panel glass-card">
-            <div className="panel-header">
-              <h3>Transcript & Analysis</h3>
-              <div className="export-actions">
-                <button onClick={exportToMarkdown} title="Export Markdown" className="icon-btn">📄 MD</button>
-                <button onClick={exportToPDF} title="Print PDF" className="icon-btn">🖨️ PDF</button>
-              </div>
+        <section className="transcript-panel glass-card">
+          <div className="panel-header">
+            <h3>Adaptive Analysis Results</h3>
+            <div className="export-actions">
+              <button onClick={exportToMarkdown} className="icon-btn">📄 MD</button>
+              <button onClick={() => window.print()} className="icon-btn">🖨️ PDF</button>
             </div>
-            <div className="scroll-area">
-              {isProcessing && <div className="loading-spinner">Processing Audio...</div>}
-              {!transcript && !isProcessing && <p className="empty-state">No analysis yet...</p>}
-              <div className="summary-content markdown">{transcript}</div>
-            </div>
-          </section>
-        ) : (
-          <section className="history-panel glass-card">
-            <h3>Meeting History</h3>
-            <div className="scroll-area">
-              {history.length === 0 ? (
-                <p className="empty-state">No saved meetings yet.</p>
-              ) : (
-                <div className="history-list">
-                  {history.map(item => (
-                    <div key={item.id} className="history-item" onClick={() => loadHistoryItem(item)}>
-                      <div className="history-info">
-                        <span className="history-date">{item.date}</span>
-                        <span className="history-meta">{item.provider.toUpperCase()} • {item.modelId} • {formatTime(item.duration)}</span>
-                      </div>
-                      <button className="delete-btn" onClick={(e) => deleteHistoryItem(item.id, e)}>×</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-        )}
+          </div>
+          <div className="scroll-area">
+            <div className="summary-content markdown">{transcript}</div>
+          </div>
+        </section>
       </main>
     </div>
   );
