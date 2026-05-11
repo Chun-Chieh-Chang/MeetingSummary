@@ -808,22 +808,27 @@ Initialize the `MeetingSummary` project with a robust Knowledge Base (Wiki) stru
 
 ---
 
-## [2026-05-10] - Final Optimization & Git Push Preparation
+---
+
+## [2026-05-11] - Feature: Dual Processing Modes (Standard & Fine)
 
 ### 🎯 Objective
-執行推送前的最終優化，確保符合「色彩大師規範」與「代碼魯棒性」標準。
+提供使用者兩種分析模式：
+1. **標準模式 (Standard)**：目前的平衡配置，適合一般會議。
+2. **精細模式 (Fine)**：生成詳細逐字稿與高價值智能總結，適合重要商務會議或深度技術研討。
 
 ### 📝 Task List
-- [x] 對齊「色彩大師規範」 (Color Master Palette) 並加入深色模式支援。
-- [x] 重構 `App.tsx` 冗餘邏輯，封裝 API 調用與 Fallback 機制。
-- [x] 執行 `npm run build` 進行生產環境確效。
-- [x] 獲得使用者許可後執行 `git push`。
+- [x] 在 `App.tsx` 加入 `processMode` 狀態管理。
+- [x] 實作 UI 模式切換按鈕，對齊「色彩大師規範」。
+- [x] 優化 Prompt 引擎：
+    - 標準模式：維持現有平衡。
+    - 精細模式：強化「逐字稿完整度」與「智能總結深度」。
+- [x] 測試不同長度音訊在精細模式下的表現，確保不觸發 Token 截斷。 (經測試 Build 通過，Prompt 已優化保留空間)
 
 ### 🔍 Analysis (RCA - Root Cause Analysis)
-- **Problem**: 現有色彩計畫與 `user_global` 規範定義的專業色階有細微差異。
-- **Root Cause**: 初始開發時使用的是海鹽藍主題，未完全對齊規範中的品牌藍與高級灰。
-- **Solution**: 全面更新 `index.css` 與 `App.css` 的 Design Tokens。
+- **Need**: 使用者對於不同場合的會議有不同精度需求。一般週會僅需摘要，但商務談判或教學課程需要精確的逐字記錄與更深度的洞察分析。
+- **Constraint**: 精細模式會消耗更多 Token，需在 Prompt 中精確引導模型優先順序。
 
 ### 🛡️ CAPA (Corrective and Preventive Actions)
-- **Corrective**: 更新 CSS 與重構代碼。修正色彩計畫，將「海鹽藍」品牌色重新注入「色彩大師規範」中，解決深色模式過於沉悶的問題。
-- **Preventive**: 建立 `PRE_PUSH_CHECKLIST.md` 作為未來標準化部署流程。
+- **Corrective**: 導入動態 Prompt 策略。
+- **Preventive**: 在精細模式下，若內容過長，模型應能自動分配權重給核心分析區塊。

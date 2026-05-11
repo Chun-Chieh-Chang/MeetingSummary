@@ -128,6 +128,7 @@ const App: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [currentFileIndex, setCurrentFileIndex] = useState<number | null>(null);
   const [processedFileIndices, setProcessedFileIndices] = useState<Set<number>>(new Set());
+  const [processMode, setProcessMode] = useState<'standard' | 'fine'>('standard');
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -332,7 +333,8 @@ const App: React.FC = () => {
 
   const processWithGemini = async (blob: Blob, key: string) => {
     const base64Data = await fileToBase64(blob);
-    const prompt = `## 任務：專業會議分析 (Multi-modal Analysis 2026)
+    
+    const standardPrompt = `## 任務：專業會議分析 (Multi-modal Analysis 2026)
 你是一個頂尖的會議記錄與情境分析專家。請針對音訊內容，產生一份結構嚴謹的報告。
 
 ### 🛑 輸出格式要求 (必須嚴格遵守三大區塊)：
@@ -355,6 +357,31 @@ const App: React.FC = () => {
 - 若對話過長，請適度精簡逐字稿，以確保摘要與總結有足夠空間生成。
 - 語系：請使用繁體中文 (zh-TW)。`;
 
+    const finePrompt = `## 任務：高精度商務會議分析與深度智能洞察 (Fine-Grained Intelligence 2026)
+你是一個具備跨國企業與學術背景的頂尖速記官與分析專家。請產出具備「極高完整度」與「策略深度」的報告。
+
+### 🛑 輸出格式要求：
+
+1. **精細逐字稿 (High-Fidelity Transcript)**: 
+   - [mm:ss] 精確時間戳記。
+   - 標註講者身分並捕捉語氣與關鍵措辭。
+   - 內容需達到 99% 的重現度，不可過度概括。
+
+2. **深度多維摘要 (Multi-dimensional Intelligence Summary)**:
+   - **核心議論**: 深度拆解每個議題的背景、論點與共識。
+   - **隱性洞察**: 分析講者之間的立場差異、關鍵決策點或潛在風險。
+   - **數據/細節**: 提取所有提到的具體數字、日期、地點或專有名詞。
+
+3. **高價值結論與執行計畫 (Strategic Conclusion & Action Plan)**:
+   - 提煉具備執行力的核心結論。
+   - 以優先級 (P0/P1) 列出行動方案，並標註負責人（若提及）。
+
+### ⚠️ 重要指令：
+- **精細度極大化**：這是精細模式，請確保逐字稿的細節完整，且總結具備深度分析價值。
+- 語系：請使用繁體中文 (zh-TW)。`;
+
+    const prompt = processMode === 'standard' ? standardPrompt : finePrompt;
+
     try {
       const text = await callGemini(key, prompt, { data: base64Data, mimeType: blob.type }, "錄音分析: ");
       setTranscript(text);
@@ -369,7 +396,8 @@ const App: React.FC = () => {
 
   const processWithFile = async (file: File, key: string): Promise<string> => {
     const base64Data = await fileToBase64(file);
-    const prompt = `## 任務：檔案情境識別與專業摘要提取
+    
+    const standardPrompt = `## 任務：檔案情境識別與專業摘要提取
 檔案名稱：「${file.name}」
 
 ### 🛑 輸出格式要求：
@@ -380,6 +408,20 @@ const App: React.FC = () => {
 ### ⚠️ 指令：
 - **嚴禁遺漏**「詳細摘要」與「總結」。
 - 語系：繁體中文 (zh-TW)。`;
+
+    const finePrompt = `## 任務：高精度檔案分析與深度智能洞察
+檔案名稱：「${file.name}」
+
+### 🛑 輸出格式要求：
+1. **精細逐字稿 (High-Fidelity Transcript)**: 完整重現對話細節，標註講者與時間 [mm:ss]。
+2. **多維度深度摘要 (Multi-dimensional Summary)**: 包含背景分析、論點拆解、細節提取（數據/名詞）。
+3. **高價值結論 (Strategic Conclusion)**: 提煉核心洞察與策略建議。
+
+### ⚠️ 指令：
+- **極大化細節**：確保內容的廣度與深度。
+- 語系：繁體中文 (zh-TW)。`;
+
+    const prompt = processMode === 'standard' ? standardPrompt : finePrompt;
 
     return callGemini(key, prompt, { data: base64Data, mimeType: file.type }, `檔案 ${file.name}: `);
   };
@@ -432,6 +474,30 @@ ${allTranscripts}`;
           <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)} className="api-input">
             {GEMINI_MODELS.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
+
+          <div className="process-mode-container">
+            <div className="mode-label">分析模式</div>
+            <div className="mode-toggle">
+              <button 
+                className={`mode-btn ${processMode === 'standard' ? 'active' : ''}`}
+                onClick={() => setProcessMode('standard')}
+              >
+                標準
+              </button>
+              <button 
+                className={`mode-btn ${processMode === 'fine' ? 'active' : ''}`}
+                onClick={() => setProcessMode('fine')}
+              >
+                精細 ✨
+              </button>
+            </div>
+            <p className="mode-description">
+              {processMode === 'standard' 
+                ? '適合一般會議，平衡摘要速度與內容。' 
+                : '高精度逐字稿與深度洞察，適合重要會議。'}
+            </p>
+          </div>
+
           <input type="password" placeholder="Enter API Key" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="api-input" />
           <div className="audio-source-selector">
             <button type="button" className={`source-btn ${audioSource === 'record' ? 'active' : ''}`} onClick={() => setAudioSource('record')}>🎤 錄製</button>
