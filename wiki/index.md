@@ -9,12 +9,10 @@ The rules and workflows for this wiki.
 
 ### [Entities](entities/)
 *   [project-requirements](entities/project-requirements.md): Goals and constraints.
-*   [ui-design](entities/ui-design.md): The user interface and aesthetics.
-*   [audio-engine](entities/audio-engine.md): MediaRecorder and audio processing.
-*   [backend](entities/backend.md): Gemini API integration.
+*   [audio-engine](entities/audio-engine.md): Web Speech API and transcription engine.
 
 ### [Concepts](concepts/)
-*   [speaker-diarization](concepts/speaker-diarization.md): Logic for identifying multiple speakers.
+*   [speaker-diarization](concepts/speaker-diarization.md): LLM-based speaker inference logic.
 *   [meeting-summarization](concepts/meeting-summarization.md): Strategy for structured summaries.
 *   [history-persistence](concepts/history-persistence.md): Local storage and data management.
 *   [llm-wiki](concepts/llm-wiki.md): The project knowledge governance pattern.

@@ -1140,3 +1140,30 @@ git show HEAD:src/App.tsx | head -15
 
 ### 🔍 RCA / Design Rationale
 原介面的按鈕存在大量瀏覽器默認無邊框灰階樣式（如 API 自訂按鈕、導出按鈕），且錄音按鈕缺乏適當的狀態指示和動態交互。依據「色彩大師規範」與「Premium UI Design」規範，加入微動效（Micro-interactions）與符合 HSL 調配的精細陰影和漸層，能極大化提升系統的操作愉悅度與視覺階層感。
+
+---
+
+## [2026-06-19] - Chore: Code Cleanup, MECE Integration & Mobile UX Enhancement
+
+### 🎯 Objective
+識別並清除過時、冗餘或無效的代碼與樣式，優化手機版錄音後的使用者體驗，建立還原基準點，並更新所有必要的開發文檔。
+
+### ✅ Task List
+- [x] 識別 CSS 中未使用的樣式類別（Process Mode、Model Info、Audio Source、File Info、Selected Files List、File Progress、Settings Toggle 等舊版 Gemini 功能遺留）
+- [x] 清除所有未使用的 CSS 代碼（減少 ~130 行，CSS 檔案從 15.12 KB 降至 10.80 KB）
+- [x] 新增手機版 toast 通知系統：分析完成時自動捲動至結果區域並顯示 4 秒通知
+- [x] 為分析結果面板新增 `ref` 引用以支援自動捲動
+- [x] 新增 `.toast-notification` 樣式（桌面版右上角顯示、手機版底部中央顯示）
+- [x] 驗證編譯通過（tsc + vite build）
+- [x] 更新 DEV_LOG.md 記錄本次變更
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+1. **冗餘 CSS 來源**：早期版本支援多模態音頻上傳（MediaRecorder + Gemini 音頻分析），包含文件上傳、進度條、多文件列表等功能。遷移至 Agnes AI + Web Speech API 後，這些 UI 組件已被移除，但對應的 CSS 樣式未被清理。
+2. **手機版體驗問題**：錄音停止後，分析結果出現在下方面板，但手機版用戶可能不知道要向下捲動才能看到結果。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**：一次性清除所有未使用的 CSS 類別，包括 `.process-mode-container`、`.mode-btn`、`.model-info`、`.audio-source-selector`、`.file-info`、`.selected-files-list`、`.file-progress-track`、`.settings-toggle` 等。
+- **Preventive**：在移除或重構 UI 組件時，必須同步清理對應的 CSS 樣式，避免累積技術債。建議在 PR 檢查清單中加入「CSS 清理驗證」步驟。
+- **Mobile UX**：新增 toast 通知與自動捲動功能，確保手機版用戶在分析完成後能立即看到結果，無需手動搜尋。
+
+---

@@ -120,6 +120,8 @@ const App: React.FC = () => {
   const [showKeyOverride, setShowKeyOverride] = useState(false);
   const [overrideKey, setOverrideKey] = useState('');
   const [speechLang, setSpeechLang] = useState('zh-TW');
+  const [showResultToast, setShowResultToast] = useState(false);
+  const analysisPanelRef = useRef<HTMLDivElement>(null);
 
   // Effective key: override takes priority over built-in
   const effectiveKey = overrideKey.trim() || apiKey;
@@ -136,6 +138,22 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('meeting_history_v2');
     if (saved) setHistory(JSON.parse(saved));
   }, []);
+
+  // ── Auto-scroll to analysis result & show toast when analysis completes ──
+  useEffect(() => {
+    if (analysisResult && !isProcessing && !isRecording) {
+      // Show toast notification
+      setShowResultToast(true);
+      const timer = setTimeout(() => setShowResultToast(false), 4000);
+
+      // Auto-scroll to analysis panel
+      if (analysisPanelRef.current) {
+        analysisPanelRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      return () => clearTimeout(timer);
+    }
+  }, [analysisResult, isProcessing, isRecording]);
 
   // ── Helpers ────────────────────────────────
   const formatTime = (seconds: number) => {
@@ -471,7 +489,7 @@ const App: React.FC = () => {
               </section>
 
               {/* Analysis Result Panel */}
-              <section className="summary-panel glass-card">
+              <section ref={analysisPanelRef} className="summary-panel glass-card">
                 <div className="panel-header">
                   <h3>🤖 Agnes Analysis</h3>
                 </div>
@@ -531,6 +549,14 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
+
+      {/* ── Toast Notification ─────────────────── */}
+      {showResultToast && (
+        <div className="toast-notification">
+          <span className="toast-icon">✅</span>
+          <span className="toast-text">分析完成！已自動捲動至結果區域</span>
+        </div>
+      )}
     </div>
   );
 };

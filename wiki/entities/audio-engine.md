@@ -15,7 +15,8 @@ The Audio Engine is responsible for capturing speech input and converting it to 
 2. **Stream**: `onresult` fires continuously; interim results shown in `[brackets]`
 3. **Finalize**: Each `isFinal` segment appended to `finalTranscript` with `。`
 4. **Stop & Analyze**: `recognition.stop()` → captured text sent to `callAgnesChat()`
-5. **Auto-restart guard**: `onend` handler checks `isRecording` state to prevent infinite restart loops
+5. **Auto-restart guard**: `onend` handler checks `isRecordingRef.current` state to prevent infinite restart loops
+6. **Mobile UX**: Analysis completion triggers auto-scroll to result panel and toast notification (4s)
 
 ## Architecture Change from v1.0
 
