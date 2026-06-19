@@ -12,10 +12,10 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/generativelanguage\.googleapis\.com\/.*/i,
+            urlPattern: /^https:\/\/apihub\.agnes-ai\.com\/.*/i,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'gemini-api-cache',
+              cacheName: 'agnes-api-cache',
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days

@@ -1,22 +1,43 @@
 # Speaker Diarization Concept
 
-Speaker Diarization is the process of partitioning an audio stream into homogeneous segments according to the speaker identity ("who spoke when").
+Speaker Diarization is the process of identifying "who spoke when" in a conversation.
 
-## 1. Challenges in Web Environment
-- **Local Limitations**: Browsers do not have built-in diarization engines.
-- **Background Noise**: Meetings in open spaces make speaker separation difficult.
-- **Overlapping Speech**: Distinguishing multiple speakers talking at once requires advanced neural networks.
+## Current Approach (v2.0 — Web Speech API)
 
-## 2. Implementation Strategies
-### Strategy A: Cloud-Based (Recommended)
-Use APIs like **AssemblyAI** or **OpenAI Whisper** (with custom diarization pipelines like Pyannote).
-- **Pros**: High accuracy, multi-language support, handles noise well.
-- **Cons**: Latency, API costs, privacy concerns.
+MeetingSummary Pro uses a **two-stage pipeline**:
 
-### Strategy B: Local Processing
-Use `WebAssembly` (WASM) versions of Whisper or other light models.
-- **Pros**: Privacy, zero latency once loaded.
-- **Cons**: High CPU/RAM usage, lower accuracy for diarization.
+1. **Stage 1 — Real-time STT (Browser)**
+   - `SpeechRecognition` API captures speech continuously
+   - Each `isFinal` segment is timestamped and appended to the transcript
+   - No speaker labeling at this stage (Web Speech API does not support diarization)
 
-## 3. MeetingSummary Approach
-The project uses the **MediaRecorder API** to capture raw audio blobs, which are then queued for cloud processing to ensure the highest quality summary and accurate speaker tracking.
+2. **Stage 2 — LLM Inference (Agnes AI)**
+   - The complete transcript text is sent to `agnes-2.0-flash`
+   - The model is prompted to infer speaker identity from conversational context
+   - Output: structured "Diarized Transcript" section with labeled speakers (發言者 1, 2... or names if mentioned)
+
+## Limitations
+
+- **No true diarization**: Web Speech API provides a single-stream transcript without speaker boundaries
+- **LLM inference only**: Agnes AI infers speakers from context clues (names mentioned, turn-taking patterns)
+- **Accuracy**: Good for structured meetings with distinct speakers; less accurate for fast-paced overlapping speech
+
+## Comparison: v1.0 vs v2.0
+
+| Feature | v1.0 (Gemini) | v2.0 (Agnes AI) |
+|:---|:---|:---|
+| Audio capture | MediaRecorder (blob) | Web Speech API (text) |
+| STT | Gemini inline audio multimodal | Browser-native (free) |
+| Diarization | Gemini multimodal reasoning on audio | Agnes LLM inference on transcript |
+| Privacy | Audio sent to Google | Audio stays in browser |
+
+## Future Improvement Options
+
+- **AssemblyAI**: Dedicated diarization API, high accuracy, paid
+- **WebAssembly Whisper**: Local, private, but high CPU, no diarization
+- **Agnes audio model**: If Agnes releases an audio/diarization endpoint in future
+
+## Related
+
+- [Audio Engine](../entities/audio-engine.md)
+- [Meeting Summarization](./meeting-summarization.md)

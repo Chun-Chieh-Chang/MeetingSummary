@@ -832,3 +832,55 @@ Initialize the `MeetingSummary` project with a robust Knowledge Base (Wiki) stru
 ### 🛡️ CAPA (Corrective and Preventive Actions)
 - **Corrective**: 導入動態 Prompt 策略。
 - **Preventive**: 在精細模式下，若內容過長，模型應能自動分配權重給核心分析區塊。
+
+---
+
+## [2026-06-19] - MECE 清理 & 版本管理加固 (v2.0.0)
+
+### 🎯 Objective
+修復 Agnes AI 遷移事故（rebase --ours/--theirs 語意錯誤），執行全專案 MECE 清理，建立 pre-push 驗證防線。
+
+### ✅ Task List
+- [x] Hotfix：還原正確的 Agnes AI App.tsx
+- [x] 移除廢棄依賴 `@google/generative-ai`（已無使用）
+- [x] 移除錯誤套件 `@vite-pwa/astro`（Astro 專用，此專案為 Vite+React）
+- [x] 移除可選工具 `sharp`（非核心依賴）
+- [x] 版本號 `0.0.0` → `2.0.0`（Agnes 遷移為重大版本）
+- [x] 新增 `npm run validate` script（Agnes 關鍵字存在性檢驗）
+- [x] GitHub Actions 加入 validate 步驟（build 前先驗證）
+- [x] 更新 `wiki/entities/audio-engine.md`（Web Speech API 架構）
+- [x] 更新 `wiki/entities/project-requirements.md`（Agnes AI）
+- [x] 更新 `raw/requirements.md`（Agnes AI）
+- [x] 更新 `wiki/concepts/speaker-diarization.md`（Web Speech API 流程）
+
+### ⚠️ Git Workflow SOP（防止 Rebase 事故重演）
+
+#### 黃金法則：`git rebase` 中的 --ours/--theirs 語意與 merge **完全相反**
+
+| 操作 | `--ours` | `--theirs` |
+|:---|:---|:---|
+| `git merge` | 當前分支（本地） | 被合併的分支 |
+| **`git rebase`** | **rebase 目標（遠端）** | **本地正在重放的 commit** |
+
+> 記憶口訣：rebase 時，「我們」是正在被重放的 commit → `--theirs`
+
+#### Pre-push Checklist（必須全部通過）
+```bash
+# 1. 驗證功能關鍵字
+npm run validate
+
+# 2. 確認 build 成功
+npm run build
+
+# 3. Rebase 衝突解決後，人眼驗證關鍵檔案
+git show HEAD:src/App.tsx | head -15
+```
+
+#### Feature Branch 規則
+- 重大功能遷移（LLM 切換、架構重構）→ 必須開 `feat/xxx` 分支
+- 小修補 → 可直接在 main 進行
+- 直接 push 前：必須確認 `git log --oneline -3` 的 commit 內容符合預期
+
+### 🔍 RCA 參考
+→ 見 RCA 文件：rebase 衝突中誤用 `--ours` 導致 Gemini 版覆蓋 Agnes 版。
+詳細分析見 Antigravity brain: `rca_rebase_incident.md`

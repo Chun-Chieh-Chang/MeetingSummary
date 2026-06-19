@@ -29,6 +29,8 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm install
+      - name: Validate Agnes migration
+        run: npm run validate
       - name: Build
         run: npm run build
         env:
