@@ -308,85 +308,70 @@ const App: React.FC = () => {
   // ── UI ─────────────────────────────────────
   return (
     <div className="app-container">
-      <header className="app-header">
-        <h1>🎙️ MeetingSummary Pro</h1>
-        <p>Powered by Agnes AI · agnes-2.0-flash</p>
-      </header>
+      {/* ── Left Sidebar Controls ─────────────────── */}
+      <aside className="sidebar glass-card">
+        <header className="app-header">
+          <h1>🎙️ MeetingSummary Pro</h1>
+          <p>Powered by Agnes AI · agnes-2.0-flash</p>
+        </header>
 
-      <main className="dashboard">
-        {/* ── Controls Panel ─────────────────── */}
-        <section className="controls glass-card">
-          <div className="view-toggle">
-            <button
-              className={view === 'current' ? 'active' : ''}
-              onClick={() => setView('current')}
-            >
-              Current
-            </button>
-            <button
-              className={view === 'history' ? 'active' : ''}
-              onClick={() => setView('history')}
-            >
-              History ({history.length})
-            </button>
-          </div>
-
-          {/* API Key & Language Config */}
-          <div className="api-config-wrapper">
-            <div className="api-config">
-              {/* Key status area */}
-              {BUILTIN_KEY && !showKeyOverride ? (
-                <div className="key-badge-area">
-                  <span className="key-badge">🔐 API Key 已內建</span>
+        {/* API Key & Language Config */}
+        <div className="api-config-wrapper">
+          <div className="api-config">
+            {/* Key status area */}
+            {BUILTIN_KEY && !showKeyOverride ? (
+              <div className="key-badge-area">
+                <span className="key-badge">🔐 API Key 已內建</span>
+                <button
+                  className="key-override-btn"
+                  onClick={() => setShowKeyOverride(true)}
+                  title="使用您自己的 API Key 覆蓋"
+                >
+                  ✏️ 自訂
+                </button>
+              </div>
+            ) : (
+              <div className="key-input-area">
+                <input
+                  id="agnes-api-key"
+                  type="password"
+                  placeholder={BUILTIN_KEY ? '輸入自訂 Key（留空使用內建）' : 'Enter Agnes API Key (sk-...)'}
+                  value={overrideKey}
+                  onChange={(e) => setOverrideKey(e.target.value)}
+                  className="api-input"
+                  autoComplete="off"
+                />
+                {BUILTIN_KEY && (
                   <button
                     className="key-override-btn"
-                    onClick={() => setShowKeyOverride(true)}
-                    title="使用您自己的 API Key 覆蓋"
+                    onClick={() => { setShowKeyOverride(false); setOverrideKey(''); }}
+                    title="恢復使用內建 Key"
                   >
-                    ✏️ 自訂
+                    ↩ 復原
                   </button>
-                </div>
-              ) : (
-                <div className="key-input-area">
-                  <input
-                    id="agnes-api-key"
-                    type="password"
-                    placeholder={BUILTIN_KEY ? '輸入自訂 Key（留空使用內建）' : 'Enter Agnes API Key (sk-...)'}
-                    value={overrideKey}
-                    onChange={(e) => setOverrideKey(e.target.value)}
-                    className="api-input"
-                    autoComplete="off"
-                  />
-                  {BUILTIN_KEY && (
-                    <button
-                      className="key-override-btn"
-                      onClick={() => { setShowKeyOverride(false); setOverrideKey(''); }}
-                      title="恢復使用內建 Key"
-                    >
-                      ↩ 復原
-                    </button>
-                  )}
-                </div>
-              )}
-              <select
-                id="speech-lang"
-                value={speechLang}
-                onChange={(e) => setSpeechLang(e.target.value)}
-                className="provider-select"
-                title="語音辨識語言"
-              >
-                <option value="zh-TW">🇹🇼 繁體中文</option>
-                <option value="zh-CN">🇨🇳 簡體中文</option>
-                <option value="en-US">🇺🇸 English (US)</option>
-                <option value="ja-JP">🇯🇵 日本語</option>
-              </select>
-            </div>
-            <p className="privacy-note">
-              🔒 語音在瀏覽器本地辨識，僅文字摘要請求傳送至 Agnes AI
-            </p>
+                )}
+              </div>
+            )}
+            <select
+              id="speech-lang"
+              value={speechLang}
+              onChange={(e) => setSpeechLang(e.target.value)}
+              className="provider-select"
+              title="語音辨識語言"
+            >
+              <option value="zh-TW">🇹🇼 繁體中文</option>
+              <option value="zh-CN">🇨🇳 簡體中文</option>
+              <option value="en-US">🇺🇸 English (US)</option>
+              <option value="ja-JP">🇯🇵 日本語</option>
+            </select>
           </div>
+          <p className="privacy-note">
+            🔒 語音在瀏覽器本地辨識，僅文字摘要請求傳送至 Agnes AI
+          </p>
+        </div>
 
-          {/* Recording Status */}
+        {/* Recording Controls */}
+        <div className="record-controls">
           <div className="recording-status">
             {isRecording && <span className="recording-indicator"></span>}
             <span className="timer">{formatTime(duration)}</span>
@@ -404,7 +389,29 @@ const App: React.FC = () => {
               ? '⏳ Analyzing...'
               : '▶ Start Meeting'}
           </button>
-        </section>
+        </div>
+
+        <footer className="app-footer">
+          <p>© 2026 MeetingSummary Pro · Agnes AI · Web Speech API</p>
+        </footer>
+      </aside>
+
+      {/* ── Right Main Content Area ───────────────── */}
+      <main className="main-content">
+        <div className="view-toggle">
+          <button
+            className={view === 'current' ? 'active' : ''}
+            onClick={() => setView('current')}
+          >
+            Current
+          </button>
+          <button
+            className={view === 'history' ? 'active' : ''}
+            onClick={() => setView('history')}
+          >
+            History ({history.length})
+          </button>
+        </div>
 
         {/* ── Content Grid ───────────────────── */}
         <div className="content-grid">
@@ -506,10 +513,6 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
-
-      <footer className="app-footer">
-        <p>© 2026 MeetingSummary Pro · Agnes AI (agnes-2.0-flash) · Web Speech API</p>
-      </footer>
     </div>
   );
 };

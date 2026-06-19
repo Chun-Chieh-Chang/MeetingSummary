@@ -876,6 +876,201 @@ npm run build
 git show HEAD:src/App.tsx | head -15
 ```
 
+- **Corrective**: 實作逐字稿標記與檔案清單 UI。
+- **Preventive**: 定期檢視使用者對於摘要結構的需求，動態調整 Prompt 範本。
+
+---
+
+## [2026-05-10] - File Processing Order (Alphabetical Sort)
+
+### 🎯 Objective
+確保多檔案處理時，分析順序嚴格遵循檔案名稱（Alphabetical Order）。
+
+### 📝 Task List
+- [x] 修改 `handleFileSelect` 邏輯，在存入 `selectedFiles` 前執行排序。
+- [x] 使用 `localeCompare` 搭配 `numeric: true` 實現智慧型數字排序（如：part1, part2, part10）。
+- [x] 更新 UI 提示文字，告知使用者檔案已按名稱排序。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 瀏覽器選取檔案時的順序可能不固定（取決於 OS 或選取順序），導致分析後的逐字稿邏輯中斷。
+- **Solution**: 在前端強制對檔案陣列進行排序，保證處理順序的可預測性。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 實作 `selectedFiles.sort()`。
+- **Preventive**: 對於具備順序依賴性的批次任務，一律在入口點進行正規化排序。
+
+---
+
+## [2026-05-10] - Individual File Processing Progress UI
+
+### 🎯 Objective
+在多檔案處理過程中，提供更細緻的進度回饋，讓使用者即時掌握每個檔案的分析狀態。
+
+### 📝 Task List
+- [x] 新增 `currentFileIndex` 與 `processedFileIndices` 狀態追蹤。
+- [x] 在邊欄檔案清單中為每個檔案加入狀態圖示（等待中、處理中 ⏳、已完成 ✅）。
+- [x] 針對正在處理的檔案加入底部的 **動態進度條 (Progress Track Animation)**。
+- [x] 優化「清除全部」邏輯，確保清除檔案時一併重置所有處理狀態。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 批次處理時，原 UI 僅能顯示總體文字提示（如：解析中 2/4），使用者無法得知具體哪個檔案正在被處理或哪些已成功。
+- **Solution**: 實作組件級狀態追蹤，透過 CSS 動畫模擬 API 調用過程中的進度感。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 實作檔案層級的進度條與狀態指示器。
+- **Preventive**: 對於耗時較長的非同步任務，應優先考慮分階段的狀態可視化。
+
+---
+
+## [2026-05-10] - Automatic Model Fallback Mechanism
+
+### 🎯 Objective
+當首選模型持續回傳 503 錯誤時，系統應自動嘗試其他可用模型，確保任務完成。
+
+### 📝 Task List
+- [x] 實作 `fileToBase64` 異步輔助函數。
+- [x] 在 `processWithGemini`, `processWithFile`, `synthesizeResults` 中加入 **模型切換隊列 (Fallback Queue)**。
+- [x] 當 `generateContentWithRetry` 在 5 次重試後仍失敗且錯誤為 transient (503/429) 時，自動切換至下一個模型。
+- [x] 優體 UI 反饋：切換模型時顯示 `⚠️ [Model ID] 過載，自動切換至下一個模型...`。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 單一模型的重試（Retry）在極端過載的情況下仍可能失敗，導致使用者任務中斷。
+- **Solution**: 實作 **Multi-Model Redundancy**。預設順序為：`gemini-3.1-flash-lite` -> `gemini-2.5-flash` -> `gemini-2.5-pro`。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 實作模型自動降級與備援機制。
+- **Preventive**: 考慮在未來加入「API Key 輪詢」或「多區域佈署」邏輯以進一步提升穩定性。
+
+---
+
+## [2026-05-10] - Optimized Fallback Speed
+
+### 🎯 Objective
+縮短單一模型的等待時間，加快切換至備援模型的速度。
+
+### 📝 Task List
+- [x] 將 `generateContentWithRetry` 的 `maxRetries` 從 5 次下修至 **2 次**。
+- [x] 確保在第二次重試失敗後，系統立即觸發 Fallback 邏輯切換至下一個模型。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 5 次重試可能耗時過長（加上退避時間約 30-60 秒），若伺服器處於持續過載狀態，過多的重試會降低整體效率。
+- **Solution**: 減少單點重試次數，將重心轉移至模型切換，以空間（多模型資源）換取時間。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 調整 `maxRetries = 2`。
+
+---
+
+## [2026-05-10] - PDCA Build Verification & Code Cleanup
+
+### 🎯 Objective
+執行全專案編譯驗證，確保所有優化與修復皆符合生產環境標準。
+
+### 📝 Task List
+- [x] 執行 `npm run build` 進行完整編譯測試。
+- [x] 修復 TypeScript 編譯錯誤：移除未使用的 `setAssemblyKey`, `setDeepgramKey`。
+- [x] 修復 TypeScript 編譯錯誤：初始化 `lastError` 並確保其在失敗訊息中被讀取。
+- [x] 驗證 Vite 建構成功，確認 PWA 資源與 Assets 正確產出。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Observation**: 雖然 `tsc --noEmit` 通過，但生產環境建構 `tsc -b` 捕捉到了細微的變數引用錯誤。
+- **Solution**: 遵循 MECE 原則清理冗餘變數，並加強錯誤處理的完整性。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Check (Effect Confirmation)**: `npm run build` 已成功，產出物完整，無任何警告或錯誤。
+- **Preventive**: 每次任務結束前必須執行一次完整 Build 以作最終驗證。
+
+---
+
+## [2026-05-10] - Structured Output Enforcement (Missing Summary Fix)
+
+### 🎯 Objective
+修復在長音訊分析時，AI 可能遺漏摘要與總結區塊的問題。
+
+### 📝 Task List
+- [x] 優化 Prompt 結構：使用 Markdown Header 標註三大必填區塊。
+- [x] 加入強制指令：要求 AI 即使內容過長也必須保留「摘要」與「總結」。
+- [x] 調整 `generationConfig`：設置 `maxOutputTokens: 8192` 以提供充足的輸出空間。
+- [x] 優化模型參數：調整 `temperature: 0.2` 以增加輸出結構的穩定性。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Problem**: 當音訊內容極長時，逐字稿會佔據過多輸出空間，導致模型達到 Token 限制而中斷，或是忽略了後半段的指令。
+- **Solution**: 透過明確的 Sectioning 與 Token 擴展，強制模型保留關鍵的分析部分。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 更新 Prompt 與 `generationConfig`。
+- **Preventive**: 對於長文本輸出，應預設保留摘要空間。
+
+---
+
+---
+
+## [2026-05-11] - Feature: Dual Processing Modes (Standard & Fine)
+
+### 🎯 Objective
+提供使用者兩種分析模式：
+1. **標準模式 (Standard)**：目前的平衡配置，適合一般會議。
+2. **精細模式 (Fine)**：生成詳細逐字稿與高價值智能總結，適合重要商務會議或深度技術研討。
+
+### 📝 Task List
+- [x] 在 `App.tsx` 加入 `processMode` 狀態管理。
+- [x] 實作 UI 模式切換按鈕，對齊「色彩大師規範」。
+- [x] 優化 Prompt 引擎：
+    - 標準模式：維持現有平衡。
+    - 精細模式：強化「逐字稿完整度」與「智能總結深度」。
+- [x] 測試不同長度音訊在精細模式下的表現，確保不觸發 Token 截斷。 (經測試 Build 通過，Prompt 已優化保留空間)
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **Need**: 使用者對於不同場合的會議有不同精度需求。一般週會僅需摘要，但商務談判或教學課程需要精確的逐字記錄與更深度的洞察分析。
+- **Constraint**: 精細模式會消耗更多 Token，需在 Prompt 中精確引導模型優先順序。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**: 導入動態 Prompt 策略。
+- **Preventive**: 在精細模式下，若內容過長，模型應能自動分配權重給核心分析區塊。
+
+---
+
+## [2026-06-19] - MECE 清理 & 版本管理加固 (v2.0.0)
+
+### 🎯 Objective
+修復 Agnes AI 遷移事故（rebase --ours/--theirs 語意錯誤），執行全專案 MECE 清理，建立 pre-push 驗證防線。
+
+### ✅ Task List
+- [x] Hotfix：還原正確的 Agnes AI App.tsx
+- [x] 移除廢棄依賴 `@google/generative-ai`（已無使用）
+- [x] 移除錯誤套件 `@vite-pwa/astro`（Astro 專用，此專案為 Vite+React）
+- [x] 移除可選工具 `sharp`（非核心依賴）
+- [x] 版本號 `0.0.0` → `2.0.0`（Agnes 遷移為重大版本）
+- [x] 新增 `npm run validate` script（Agnes 關鍵字存在性檢驗）
+- [x] GitHub Actions 加入 validate 步驟（build 前先驗證）
+- [x] 更新 `wiki/entities/audio-engine.md`（Web Speech API 架構）
+- [x] 更新 `wiki/entities/project-requirements.md`（Agnes AI）
+- [x] 更新 `raw/requirements.md`（Agnes AI）
+- [x] 更新 `wiki/concepts/speaker-diarization.md`（Web Speech API 流程）
+
+### ⚠️ Git Workflow SOP（防止 Rebase 事故重演）
+
+#### 黃金法則：`git rebase` 中的 --ours/--theirs 語意與 merge **完全相反**
+
+| 操作 | `--ours` | `--theirs` |
+|:---|:---|:---|
+| `git merge` | 當前分支（本地） | 被合併的分支 |
+| **`git rebase`** | **rebase 目標（遠端）** | **本地正在重放的 commit** |
+
+> 記憶口訣：rebase 時，「我們」是正在被重放的 commit → `--theirs`
+
+#### Pre-push Checklist（必須全部通過）
+```bash
+# 1. 驗證功能關鍵字
+npm run validate
+
+# 2. 確認 build 成功
+npm run build
+
+# 3. Rebase 衝突解決後，人眼驗證關鍵檔案
+git show HEAD:src/App.tsx | head -15
+```
+
 #### Feature Branch 規則
 - 重大功能遷移（LLM 切換、架構重構）→ 必須開 `feat/xxx` 分支
 - 小修補 → 可直接在 main 進行
@@ -884,3 +1079,24 @@ git show HEAD:src/App.tsx | head -15
 ### 🔍 RCA 參考
 → 見 RCA 文件：rebase 衝突中誤用 `--ours` 導致 Gemini 版覆蓋 Agnes 版。
 詳細分析見 Antigravity brain: `rca_rebase_incident.md`
+
+---
+
+## [2026-06-19] - Fix: UI Layout Collapse Restoration
+
+### 🎯 Objective
+修復 Agnes AI 遷移後造成的 UI 介面佈局崩潰（Header、Main Dashboard 與 Footer 呈橫向併排擠壓問題）。
+
+### ✅ Task List
+- [x] 重構 `src/App.tsx` 的 DOM 結構，還原為原本設定的左側 `sidebar`（包含 Header、API Key 自訂、語言設定及錄音控制）與右側 `main-content` 雙欄結構。
+- [x] 更新 `src/App.css` 以支援新版 React 元件中 Live Transcript 與 Agnes Analysis 兩大區塊並列的 `.content-grid` 樣式。
+- [x] 修復 `@media (max-width: 768px)` 行動端響應式排版，確保面板垂直堆疊且支援捲動，防止溢出或變形。
+- [x] 在本地執行 `npm run validate` 與 `npm run build` 確認均無錯誤。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+- **問題**：在 Agnes 遷移中，前端頁面的 JSX 結構被改寫為將 `<header>`、`<main className="dashboard">` 與 `<footer>` 當作 `.app-container` 的直接子元素。由於 CSS 中將 `.app-container` 定義為橫向 Flex 容器 (`display: flex; flex-direction: row;`)，導致 Header、Dashboard 和 Footer 以橫向並排擠壓的方式排版，造成介面崩潰。
+- **原因**：重構 App 元件 HTML 標記時，未對齊 `App.css` 的排版規範，遺漏了 `.sidebar` 與 `.main-content` 的包覆，且沒有為 `.dashboard` 與 `.content-grid` 設定適當的 CSS 樣式。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**：將 TSX 標記還原為 `.sidebar` 與 `.main-content` 設計，並補上 `.content-grid` 的雙欄並排與行動端堆疊樣式。
+- **Preventive**：後續對 UI 標記結構進行任何微調或重新排版時，必須執行「UI/UX 佈局回歸測試」，使用瀏覽器模擬環境在 Push 之前先行檢視頁面佈局，以避免此類排版失誤。

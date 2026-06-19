@@ -149,8 +149,17 @@
 /* === Status Inline === */
 .status-inline { background: rgba(58, 124, 168, 0.04); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 0.82rem; color: var(--text-secondary); white-space: pre-wrap; max-height: 80px; overflow-y: auto; }
 
+/* === Content Grid === */
+.content-grid {
+  display: flex;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  margin-top: 16px;
+}
+
 /* === Main Content / Transcript === */
-.transcript-panel { flex: 1; display: flex; flex-direction: column; padding: 24px; text-align: left; min-height: 0; }
+.transcript-panel, .summary-panel { flex: 1; display: flex; flex-direction: column; padding: 24px; text-align: left; min-height: 0; }
 .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .panel-header h3 { margin: 0; font-size: 1rem; color: var(--accent-brand); text-transform: uppercase; letter-spacing: 1px; }
 .export-actions { display: flex; gap: 8px; }
@@ -207,7 +216,8 @@
 
   .main-content { padding: 16px; height: calc(100vh - 60px); overflow: hidden; }
 
-  .transcript-panel, .history-panel { min-height: 0; }
+  .transcript-panel, .summary-panel, .history-panel { min-height: 350px; }
+  .content-grid { flex-direction: column; overflow-y: auto; gap: 16px; }
 
   /* Mobile: settings collapsible */
   .settings-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; padding: 8px 0; font-weight: 600; color: var(--text-primary); border: none; background: none; width: 100%; font-size: 0.9rem; }
