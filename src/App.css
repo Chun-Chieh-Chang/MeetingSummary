@@ -309,7 +309,7 @@
 
   .record-controls { margin-top: 0; }
 
-  .main-content { padding: 16px; height: calc(100vh - 60px); overflow: hidden; }
+  .main-content { padding: 16px; height: calc(100vh - 60px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
   .transcript-panel, .summary-panel, .history-panel { min-height: 350px; }
   .content-grid { flex-direction: column; overflow-y: auto; gap: 16px; }
