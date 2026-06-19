@@ -311,7 +311,7 @@
 
   .main-content { padding: 16px; height: calc(100vh - 60px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
 
-  .transcript-panel, .summary-panel, .history-panel { min-height: 350px; }
+  .transcript-panel, .summary-panel, .history-panel { min-height: 350px; flex: 1; }
   .content-grid { flex-direction: column; overflow-y: auto; gap: 16px; }
 
   /* Mobile: toast notification adjustments */
