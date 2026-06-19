@@ -1100,3 +1100,43 @@ git show HEAD:src/App.tsx | head -15
 ### 🛡️ CAPA (Corrective and Preventive Actions)
 - **Corrective**：將 TSX 標記還原為 `.sidebar` 與 `.main-content` 設計，並補上 `.content-grid` 的雙欄並排與行動端堆疊樣式。
 - **Preventive**：後續對 UI 標記結構進行任何微調或重新排版時，必須執行「UI/UX 佈局回歸測試」，使用瀏覽器模擬環境在 Push 之前先行檢視頁面佈局，以避免此類排版失誤。
+
+---
+
+## [2026-06-19] - Fix: Recording Stop Failure & Thread-Safety
+
+### 🎯 Objective
+解決使用者點擊「Start Meeting」錄音後，再次按下「Stop & Analyze」按鈕無法停止錄音、且計時器持續進行或介面卡死的問題。
+
+### ✅ Task List
+- [x] 在 `src/App.tsx` 引入 `isRecordingRef` 用於維護非同步閉包（Closure）中正確的錄音狀態。
+- [x] 在 `startRecording` 的 `onend` 回調中使用 `isRecordingRef.current` 代替 stale 的 state 變數，解決瀏覽器自動暫停觸發 `onend` 時無法重啟的 Bug。
+- [x] 為 `stopRecording` 中的 `recognition.stop()` 調用添加 `try-catch` 異常防禦，防止因瀏覽器錄音服務處於 Transition/Stopped 狀態時拋出 DOMException 導致後續程式碼（包括清除計時器、呼叫 API 分析）中斷。
+- [x] 在 `startRecording` 中加入對 `isRecordingRef.current` 的前置檢查，防止快速重複點擊（Race Condition）創建多個獨立背景語音辨識實例。
+- [x] 在本地與 CI 中通過編譯與關鍵字驗證。
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+1. **Stale Closure Bug**：`SpeechRecognition.onend` 綁定在 `startRecording` 的作用域內，該作用域捕獲了當前 render 下的 stale `isRecording` 狀態（值為 `false`）。因此當 Chrome 自動停止錄音（例如用戶稍微停頓）觸發 `onend` 時，由於檢查到 `isRecording` 為 `false`，沒有調用 `recognition.start()` 重新啟動，語音辨識實際上在背景已經靜默關閉，但 React 的 `isRecording` state 仍為 `true`（UI 仍顯示錄音中）。
+2. **DOMException Interrupt**：承上，當用戶誤以為仍在錄音並按下「Stop & Analyze」時，`stopRecording` 會被調用，但執行到 `recognitionRef.current.stop()` 時，因為背景錄音其實已非啟動狀態，Chrome 會拋出 `DOMException: Failed to execute 'stop' on 'SpeechRecognition': recognition has not started.` 錯誤。
+3. **Execution Block**：由於原代碼沒有對 `stop()` 進行 `try-catch` 保護，此錯誤中斷了 `stopRecording` 的執行。後續的 `clearInterval(timerRef.current)`、`recognitionRef.current = null` 等清理邏輯與 `processWithAgnes` 全被跳過，導致計時器仍在走、錄音按鈕卡死在 Active/Analyzing 狀態。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**：使用 `isRecordingRef` 消除閉包陷阱，並在 `stop()` 方法外包裹安全網 `try-catch` 以防程式碼崩潰中斷。
+- **Preventive**：對於所有依賴瀏覽器系統層級（如 Speech, Camera, Audio）的生命週期控制方法，調用 `stop()` 或 `start()` 時必須默認包裹 `try-catch` 保護，防止異常中斷整個應用程式的狀態管理。
+
+---
+
+## [2026-06-19] - Style: Premium UI Button Optimization
+
+### 🎯 Objective
+對全網頁應用之按鈕及標籤樣式進行「色彩大師規範」美化優化，提升互動微效應與高級感。
+
+### ✅ Task List
+- [x] 為 API Key 已內建顯示區新增自訂的 `.key-badge-area` 與 `.key-override-btn` 樣式，使其擁有精緻邊框與 hover 位移懸浮陰影。
+- [x] 重構錄音控制按鈕（`.record-btn`），增加漸變色亮度變化、hover 懸浮陰影、防重複點擊的 opacity 禁用狀態，以及 active 時的「呼吸紅光波紋動畫」以強化錄音進行時的心理暗示。
+- [x] 優化切換分頁按鈕（`.view-toggle button`），實作 inactive 狀態 hover 微背景顯現及 active 狀態下的立體浮雕白底卡片效果。
+- [x] 重構導出按鈕（`.icon-btn`）與刪除按鈕（`.delete-btn`），加入極具呼吸感的陰影變幻與放大動效。
+- [x] 本地與遠端 CI 成功編譯通過。
+
+### 🔍 RCA / Design Rationale
+原介面的按鈕存在大量瀏覽器默認無邊框灰階樣式（如 API 自訂按鈕、導出按鈕），且錄音按鈕缺乏適當的狀態指示和動態交互。依據「色彩大師規範」與「Premium UI Design」規範，加入微動效（Micro-interactions）與符合 HSL 調配的精細陰影和漸層，能極大化提升系統的操作愉悅度與視覺階層感。

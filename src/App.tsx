@@ -129,6 +129,7 @@ const App: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const timerRef = useRef<number | null>(null);
   const liveTranscriptRef = useRef<string>('');
+  const isRecordingRef = useRef<boolean>(false);
 
   // ── Load history on mount ──────────────────
   useEffect(() => {
@@ -193,6 +194,11 @@ const App: React.FC = () => {
       return;
     }
 
+    if (isRecordingRef.current) {
+      console.warn('Recording is already in progress.');
+      return;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const SpeechRecognitionAPI: any =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -241,30 +247,43 @@ const App: React.FC = () => {
 
     recognition.onend = () => {
       // Auto-restart if still in recording state (handles browser auto-stops)
-      if (recognitionRef.current && isRecording) {
+      if (recognitionRef.current && isRecordingRef.current) {
         try { recognition.start(); } catch (_) { /* ignore */ }
       }
     };
 
-    recognition.start();
-    setIsRecording(true);
-    setLiveTranscript('');
-    setAnalysisResult('');
-    liveTranscriptRef.current = '';
-    setStatus('🔴 錄音中... 請開始說話，語音將即時轉換為文字。');
-    setDuration(0);
+    try {
+      recognition.start();
+      isRecordingRef.current = true;
+      setIsRecording(true);
+      setLiveTranscript('');
+      setAnalysisResult('');
+      liveTranscriptRef.current = '';
+      setStatus('🔴 錄音中... 請開始說話，語音將即時轉換為文字。');
+      setDuration(0);
 
-    timerRef.current = window.setInterval(() => {
-      setDuration((prev) => prev + 1);
-    }, 1000);
+      timerRef.current = window.setInterval(() => {
+        setDuration((prev) => prev + 1);
+      }, 1000);
+    } catch (err) {
+      console.error('Failed to start speech recognition:', err);
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      alert('❌ 無法啟動語音辨識，請重試。');
+    }
   };
 
   const stopRecording = async () => {
+    isRecordingRef.current = false;
     setIsRecording(false);
 
     if (recognitionRef.current) {
-      recognitionRef.current.onend = null; // Prevent auto-restart
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.onend = null; // Prevent auto-restart
+        recognitionRef.current.stop();
+      } catch (err) {
+        console.warn('Failed to stop speech recognition cleanly:', err);
+      }
       recognitionRef.current = null;
     }
 
@@ -285,7 +304,6 @@ const App: React.FC = () => {
     await processWithAgnes(capturedTranscript);
   };
 
-  // ── LLM Analysis via Agnes ─────────────────
   const processWithAgnes = async (transcript: string) => {
     setIsProcessing(true);
     setStatus('🤖 Agnes AI 正在分析您的會議逐字稿...');
