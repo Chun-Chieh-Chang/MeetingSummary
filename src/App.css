@@ -297,7 +297,22 @@
 }
 
 /* === Footer === */
-.app-footer { text-align: center; color: var(--text-secondary); font-size: 0.78rem; padding-top: 12px; border-top: 1px solid var(--border); margin-top: auto; }
+.app-footer { text-align: center; color: var(--text-secondary); font-size: 0.78rem; padding-top: 12px; border-top: 1px solid var(--border); margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.reset-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.reset-btn:hover {
+  background: var(--error);
+  color: white;
+  border-color: var(--error);
+}
 
 /* === Mobile === */
 @media (max-width: 768px) {

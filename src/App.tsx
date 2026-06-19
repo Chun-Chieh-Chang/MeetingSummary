@@ -184,6 +184,21 @@ const App: React.FC = () => {
     localStorage.setItem('meeting_history_v2', JSON.stringify(updated));
   };
 
+  const resetAll = () => {
+    if (!confirm('確定要重置所有資料嗎？這將清除所有歷史紀錄與設定。')) return;
+    localStorage.removeItem('meeting_history_v2');
+    setHistory([]);
+    setLiveTranscript('');
+    setAnalysisResult('');
+    setDuration(0);
+    setView('current');
+    setHasStoppedOnce(false);
+    setStatus(BUILTIN_KEY
+      ? '✅ 內建 API Key 已就緒，選擇語言後即可開始會議。'
+      : '✨ 系統已就緒，請填入 Agnes API Key 並開始會議。'
+    );
+  };
+
   const loadHistoryItem = (item: MeetingRecord) => {
     setLiveTranscript(item.transcript);
     setAnalysisResult(item.summary);
@@ -437,6 +452,9 @@ const App: React.FC = () => {
 
         <footer className="app-footer">
           <p>© 2026 MeetingSummary Pro · Agnes AI · Web Speech API</p>
+          <button onClick={resetAll} className="reset-btn" title="重置系統">
+            🔄 Reset
+          </button>
         </footer>
       </aside>
 
