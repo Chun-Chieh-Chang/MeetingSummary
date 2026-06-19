@@ -106,7 +106,10 @@ const App: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [view, setView] = useState<'current' | 'history'>('current');
-  const [history, setHistory] = useState<MeetingRecord[]>([]);
+  const [history, setHistory] = useState<MeetingRecord[]>(() => {
+    const saved = localStorage.getItem('meeting_history_v2');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [liveTranscript, setLiveTranscript] = useState<string>('');
   const [analysisResult, setAnalysisResult] = useState<string>('');
   const [status, setStatus] = useState<string>(
@@ -135,16 +138,12 @@ const App: React.FC = () => {
   const liveTranscriptRef = useRef<string>('');
   const isRecordingRef = useRef<boolean>(false);
 
-  // ── Load history on mount ──────────────────
-  useEffect(() => {
-    const saved = localStorage.getItem('meeting_history_v2');
-    if (saved) setHistory(JSON.parse(saved));
-  }, []);
-
-  // ── Auto-scroll to analysis result & show toast when analysis completes ──
+  // ── Auto-scroll to analysis result when analysis completes ──
+  // The toast state update here is intentional to provide visual feedback
   useEffect(() => {
     if (analysisResult && !isProcessing && !isRecording) {
       // Show toast notification
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowResultToast(true);
       const timer = setTimeout(() => setShowResultToast(false), 4000);
 
@@ -219,9 +218,9 @@ const App: React.FC = () => {
       return;
     }
 
+    // Web Speech API types are not available in all TypeScript versions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const SpeechRecognitionAPI: any =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognitionAPI = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognitionAPI) {
       setModalMessage('您的瀏覽器不支援 Web Speech API。\n請使用 Chrome 或 Edge 瀏覽器，並確保在 HTTPS 或 localhost 環境下運行。');
@@ -268,7 +267,7 @@ const App: React.FC = () => {
     recognition.onend = () => {
       // Auto-restart if still in recording state (handles browser auto-stops)
       if (recognitionRef.current && isRecordingRef.current) {
-        try { recognition.start(); } catch (_) { /* ignore */ }
+        try { recognition.start(); } catch { /* ignore */ }
       }
     };
 
@@ -334,10 +333,11 @@ const App: React.FC = () => {
       setAnalysisResult(result);
       setStatus(`✅ 分析完成 (agnes-2.0-flash)｜${new Date().toLocaleTimeString('zh-TW')}`);
       saveToHistory(transcript, result);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error('Agnes API Error:', err);
-      setStatus(`❌ 分析失敗：${err.message}`);
-      setAnalysisResult(`## ❌ 分析失敗\n\n${err.message}\n\n請確認您的 Agnes API Key 是否正確。`);
+      setStatus(`❌ 分析失敗：${errorMessage}`);
+      setAnalysisResult(`## ❌ 分析失敗\n\n${errorMessage}\n\n請確認您的 Agnes API Key 是否正確。`);
     } finally {
       setIsProcessing(false);
     }
