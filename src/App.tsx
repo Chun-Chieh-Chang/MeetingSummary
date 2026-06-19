@@ -121,6 +121,7 @@ const App: React.FC = () => {
   const [overrideKey, setOverrideKey] = useState('');
   const [speechLang, setSpeechLang] = useState('zh-TW');
   const [showResultToast, setShowResultToast] = useState(false);
+  const [modalMessage, setModalMessage] = useState<string | null>(null);
   const analysisPanelRef = useRef<HTMLDivElement>(null);
 
   // Effective key: override takes priority over built-in
@@ -208,7 +209,7 @@ const App: React.FC = () => {
   // ── Speech Recognition (STT) ───────────────
   const startRecording = () => {
     if (!effectiveKey.trim()) {
-      alert('❌ 請先填入 Agnes API Key。');
+      setModalMessage('請先填入 Agnes API Key。');
       return;
     }
 
@@ -222,9 +223,7 @@ const App: React.FC = () => {
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognitionAPI) {
-      alert(
-        '❌ 您的瀏覽器不支援 Web Speech API。\n請使用 Chrome 或 Edge 瀏覽器，並確保在 HTTPS 或 localhost 環境下運行。'
-      );
+      setModalMessage('您的瀏覽器不支援 Web Speech API。\n請使用 Chrome 或 Edge 瀏覽器，並確保在 HTTPS 或 localhost 環境下運行。');
       return;
     }
 
@@ -255,11 +254,11 @@ const App: React.FC = () => {
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech Recognition Error:', event.error);
       if (event.error === 'not-allowed') {
-        alert('❌ 麥克風權限被拒絕。請點擊網址列左側的鎖頭圖示，選擇「允許使用麥克風」。');
+        setModalMessage('麥克風權限被拒絕。請點擊網址列左側的鎖頭圖示，選擇「允許使用麥克風」。');
       } else if (event.error === 'no-speech') {
         // Silently ignore no-speech in continuous mode
       } else {
-        alert(`❌ 語音辨識錯誤: ${event.error}`);
+        setModalMessage(`語音辨識錯誤: ${event.error}`);
       }
     };
 
@@ -287,7 +286,7 @@ const App: React.FC = () => {
       console.error('Failed to start speech recognition:', err);
       isRecordingRef.current = false;
       setIsRecording(false);
-      alert('❌ 無法啟動語音辨識，請重試。');
+      setModalMessage('無法啟動語音辨識，請重試。');
     }
   };
 
@@ -555,6 +554,19 @@ const App: React.FC = () => {
         <div className="toast-notification">
           <span className="toast-icon">✅</span>
           <span className="toast-text">分析完成！已自動捲動至結果區域</span>
+        </div>
+      )}
+
+      {/* ── Error Modal ──────────────────────── */}
+      {modalMessage && (
+        <div className="modal-overlay" onClick={() => setModalMessage(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <span className="modal-icon">⚠️</span>
+            <p className="modal-text">{modalMessage}</p>
+            <button className="modal-close-btn" onClick={() => setModalMessage(null)}>
+              確定
+            </button>
+          </div>
         </div>
       )}
     </div>
