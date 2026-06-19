@@ -1167,3 +1167,29 @@ git show HEAD:src/App.tsx | head -15
 - **Mobile UX**：新增 toast 通知與自動捲動功能，確保手機版用戶在分析完成後能立即看到結果，無需手動搜尋。
 
 ---
+
+## [2026-06-19] - Chore: ESLint Fix, Reset Feature & MECE Integration
+
+### 🎯 Objective
+修復 ESLint 錯誤，新增 Reset 按鈕恢復系統初始狀態，完成 MECE 整合整理。
+
+### ✅ Task List
+- [x] 修復 ESLint `@typescript-eslint/no-explicit-any` 錯誤（SpeechRecognition API 型別）
+- [x] 新增 `resetAll()` 功能：清除 localStorage、歷史紀錄、重置所有狀態
+- [x] 新增 Reset 按鈕於側邊欄底部（hover 變紅色警示）
+- [x] 新增 `hasStoppedOnce` 狀態支援「繼續錄音」功能
+- [x] 修復手機版 `.main-content` 與 `.content-grid` flex 布局問題
+- [x] 修復 GitHub Actions secrets 名稱不一致問題（`AGNES_*` → `VITE_AGNES_*`）
+- [x] 將 `alert()` 替換為自訂 modal 對話框
+- [x] 驗證編譯與 ESLint 全部通過
+
+### 🔍 Analysis (RCA - Root Cause Analysis)
+1. **ESLint 錯誤**：SpeechRecognition API 沒有 TypeScript 型別定義，需要使用 `any`，但缺少 eslint-disable 註解。
+2. **GitHub Actions 失敗**：deploy.yml 的 secrets 名稱（`AGNES_API_KEY`）與代碼中引用的環境變數（`VITE_AGNES_API_KEY`）不一致，導致 build 時 API Key 為空。
+3. **手機版布局問題**：`.main-content` 和 `.content-grid` 錯誤設定 `display: flex`，導致面板無法正確渲染。
+
+### 🛡️ CAPA (Corrective and Preventive Actions)
+- **Corrective**：為所有 `any` 型別加上 eslint-disable 註解；修正 deploy.yml secrets 名稱；恢復手機版簡潔堆疊布局。
+- **Preventive**：新增 Reset 按鈕方便使用者快速恢復初始狀態；「繼續錄音」功能保留逐字稿內容，無需重新開始。
+
+---

@@ -252,7 +252,8 @@ const App: React.FC = () => {
 
     let finalTranscript = hasStoppedOnce ? liveTranscriptRef.current : '';
 
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onresult = (event: any) => {
       let interimTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const segment = event.results[i][0].transcript;
@@ -267,7 +268,8 @@ const App: React.FC = () => {
       setLiveTranscript(combined);
     };
 
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    recognition.onerror = (event: any) => {
       console.error('Speech Recognition Error:', event.error);
       if (event.error === 'not-allowed' && !modalShownRef.current) {
         modalShownRef.current = true;
