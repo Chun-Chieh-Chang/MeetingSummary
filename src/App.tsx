@@ -123,6 +123,7 @@ const App: React.FC = () => {
   const [showResultToast, setShowResultToast] = useState(false);
   const [modalMessage, setModalMessage] = useState<string | null>(null);
   const analysisPanelRef = useRef<HTMLDivElement>(null);
+  const modalShownRef = useRef<boolean>(false);
 
   // Effective key: override takes priority over built-in
   const effectiveKey = overrideKey.trim() || apiKey;
@@ -253,11 +254,13 @@ const App: React.FC = () => {
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       console.error('Speech Recognition Error:', event.error);
-      if (event.error === 'not-allowed') {
+      if (event.error === 'not-allowed' && !modalShownRef.current) {
+        modalShownRef.current = true;
         setModalMessage('麥克風權限被拒絕。請點擊網址列左側的鎖頭圖示，選擇「允許使用麥克風」。');
       } else if (event.error === 'no-speech') {
         // Silently ignore no-speech in continuous mode
-      } else {
+      } else if (!modalShownRef.current) {
+        modalShownRef.current = true;
         setModalMessage(`語音辨識錯誤: ${event.error}`);
       }
     };
@@ -559,11 +562,11 @@ const App: React.FC = () => {
 
       {/* ── Error Modal ──────────────────────── */}
       {modalMessage && (
-        <div className="modal-overlay" onClick={() => setModalMessage(null)}>
+        <div className="modal-overlay" onClick={() => { setModalMessage(null); modalShownRef.current = false; }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <span className="modal-icon">⚠️</span>
             <p className="modal-text">{modalMessage}</p>
-            <button className="modal-close-btn" onClick={() => setModalMessage(null)}>
+            <button className="modal-close-btn" onClick={() => { setModalMessage(null); modalShownRef.current = false; }}>
               確定
             </button>
           </div>
