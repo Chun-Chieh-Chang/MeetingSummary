@@ -125,6 +125,7 @@ const App: React.FC = () => {
   const [speechLang, setSpeechLang] = useState('zh-TW');
   const [showResultToast, setShowResultToast] = useState(false);
   const [modalMessage, setModalMessage] = useState<string | null>(null);
+  const [hasStoppedOnce, setHasStoppedOnce] = useState(false);
   const analysisPanelRef = useRef<HTMLDivElement>(null);
   const modalShownRef = useRef<boolean>(false);
 
@@ -234,7 +235,7 @@ const App: React.FC = () => {
     recognition.lang = speechLang;
     recognitionRef.current = recognition;
 
-    let finalTranscript = '';
+    let finalTranscript = hasStoppedOnce ? liveTranscriptRef.current : '';
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       let interimTranscript = '';
@@ -275,10 +276,12 @@ const App: React.FC = () => {
       recognition.start();
       isRecordingRef.current = true;
       setIsRecording(true);
-      setLiveTranscript('');
-      setAnalysisResult('');
-      liveTranscriptRef.current = '';
-      setStatus('🔴 錄音中... 請開始說話，語音將即時轉換為文字。');
+      if (!hasStoppedOnce) {
+        setLiveTranscript('');
+        setAnalysisResult('');
+        liveTranscriptRef.current = '';
+      }
+      setStatus(hasStoppedOnce ? '🔴 繼續錄音中... 已合併先前內容。' : '🔴 錄音中... 請開始說話，語音將即時轉換為文字。');
       setDuration(0);
 
       timerRef.current = window.setInterval(() => {
@@ -325,6 +328,7 @@ const App: React.FC = () => {
 
   const processWithAgnes = async (transcript: string) => {
     setIsProcessing(true);
+    setHasStoppedOnce(true);
     setStatus('🤖 Agnes AI 正在分析您的會議逐字稿...');
 
     try {
@@ -418,13 +422,15 @@ const App: React.FC = () => {
           <button
             id="record-btn"
             className={`record-btn ${isRecording ? 'active' : ''}`}
-            onClick={isRecording ? stopRecording : startRecording}
+            onClick={isRecording ? stopRecording : hasStoppedOnce ? startRecording : startRecording}
             disabled={isProcessing}
           >
             {isRecording
               ? '⏹ Stop & Analyze'
               : isProcessing
               ? '⏳ Analyzing...'
+              : hasStoppedOnce
+              ? '🎙️ Continue Recording'
               : '▶ Start Meeting'}
           </button>
         </div>

@@ -309,10 +309,10 @@
 
   .record-controls { margin-top: 0; }
 
-  .main-content { padding: 16px; height: calc(100vh - 60px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .main-content { padding: 16px; height: calc(100vh - 200px); overflow-y: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; }
 
   .transcript-panel, .summary-panel, .history-panel { min-height: 350px; flex: 1; }
-  .content-grid { flex-direction: column; overflow-y: auto; gap: 16px; }
+  .content-grid { flex-direction: column; overflow-y: auto; gap: 16px; display: flex; }
 
   /* Mobile: toast notification adjustments */
   .toast-notification {
