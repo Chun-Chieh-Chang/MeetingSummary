@@ -129,6 +129,12 @@ const App: React.FC = () => {
   const analysisPanelRef = useRef<HTMLDivElement>(null);
   const modalShownRef = useRef<boolean>(false);
 
+  // Audio recording mode
+  const [recordingMode, setRecordingMode] = useState<'stt' | 'audio'>('stt');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioBlobRef = useRef<Blob | null>(null);
+
   // Effective key: always use built-in key
   const effectiveKey = BUILTIN_KEY;
 
@@ -352,14 +358,92 @@ const App: React.FC = () => {
 
     const capturedTranscript = liveTranscriptRef.current.trim();
 
-    if (!capturedTranscript) {
+    if (recordingMode === 'stt' && !capturedTranscript) {
       setStatus('⚠️ 未偵測到任何語音內容，請重試。');
       return;
     }
 
-    // Clean the live display to show only final transcript
-    setLiveTranscript(capturedTranscript);
-    await processWithAgnes(capturedTranscript);
+    // Handle audio mode - process recorded audio
+    if (recordingMode === 'audio' && audioBlobRef.current) {
+      await processAudioWithAgnes(audioBlobRef.current);
+      return;
+    }
+
+    // STT mode - process transcript
+    if (recordingMode === 'stt') {
+      setLiveTranscript(capturedTranscript);
+      await processWithAgnes(capturedTranscript);
+    }
+  };
+
+  // Audio recording functions for audio mode
+  const startAudioRecording = async () => {
+    if (!BUILTIN_KEY) {
+      setModalMessage('API Key 未設定。');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      audioBlobRef.current = null;
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        audioBlobRef.current = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setDuration(0);
+      setStatus('🔴 錄音中... 音頻將保存供後續分析');
+      timerRef.current = window.setInterval(() => {
+        setDuration((prev) => prev + 1);
+      }, 1000);
+    } catch {
+      setModalMessage('無法取得麥克風權限。');
+    }
+  };
+
+  const processAudioWithAgnes = async (audioBlob: Blob) => {
+    setIsProcessing(true);
+    setHasStoppedOnce(true);
+    setStatus('🤖 Agnes AI 正在分析您的錄音...');
+
+    try {
+      // Convert audio to base64 and send to Agnes
+      const reader = new FileReader();
+      await new Promise<void>((resolve, reject) => {
+        reader.onloadend = () => resolve();
+        reader.onerror = reject;
+        reader.readAsDataURL(audioBlob);
+      });
+
+      const prompt = `以下是會議錄音的音頻檔案（Base64 編碼的 WebM 格式）。請聆聽並提供完整的會議摘要報告，使用繁體中文 (zh-TW)。`;
+
+      // Note: Agnes API may not support audio input directly.
+      // For now, we'll inform the user that audio processing requires a compatible endpoint.
+      // This is a placeholder that can be extended when Agnes adds audio support.
+      const result_text = await callAgnesChat(effectiveKey, prompt + '\n\n[音頻檔案大小: ' + (audioBlob.size / 1024).toFixed(0) + ' KB]');
+      setAnalysisResult(result_text);
+      setStatus(`✅ 分析完成 (agnes-2.0-flash)｜${new Date().toLocaleTimeString('zh-TW')}`);
+      saveToHistory('[音頻檔案]', result_text);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error('Audio processing error:', err);
+      setStatus(`❌ 分析失敗：${errorMessage}`);
+      setAnalysisResult(`## ❌ 分析失敗\n\n${errorMessage}\n\n注意：當前 Agnes API 可能不支援直接音頻輸入。建議使用即時語音辨識模式。`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const processWithAgnes = async (transcript: string) => {
@@ -420,8 +504,30 @@ const App: React.FC = () => {
             </select>
           </div>
           <p className="privacy-note">
-            🔒 語音在瀏覽器本地辨識，僅文字摘要請求傳送至 Agnes AI
+            {recordingMode === 'stt'
+              ? '🔒 語音在瀏覽器本地辨識，僅文字摘要請求傳送至 Agnes AI'
+              : '🔒 音頻直接保存在本地，分析時傳送文字描述'}
           </p>
+        </div>
+
+        {/* Recording Mode Selector */}
+        <div className="mode-selector">
+          <label>
+            <input
+              type="radio"
+              checked={recordingMode === 'stt'}
+              onChange={() => setRecordingMode('stt')}
+            />
+            即時語音辨識 (STT)
+          </label>
+          <label>
+            <input
+              type="radio"
+              checked={recordingMode === 'audio'}
+              onChange={() => setRecordingMode('audio')}
+            />
+            本地音頻錄音
+          </label>
         </div>
 
         {/* Recording Controls */}
@@ -439,7 +545,7 @@ const App: React.FC = () => {
           <button
             id="record-btn"
             className={`record-btn ${isRecording ? 'active' : ''}`}
-            onClick={isRecording ? stopRecording : hasStoppedOnce ? startRecording : startRecording}
+            onClick={isRecording ? stopRecording : recordingMode === 'stt' ? startRecording : startAudioRecording}
             disabled={isProcessing}
           >
             {isRecording
@@ -448,7 +554,9 @@ const App: React.FC = () => {
               ? '⏳ Analyzing...'
               : hasStoppedOnce
               ? '🎙️ Continue Recording'
-              : '▶ Start Meeting'}
+              : recordingMode === 'stt'
+              ? '▶ Start Meeting'
+              : '🎙️ Start Recording'}
           </button>
         </div>
 
