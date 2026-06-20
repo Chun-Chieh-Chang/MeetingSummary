@@ -118,10 +118,6 @@ const App: React.FC = () => {
       : '✨ 系統已就緒，請填入 Agnes API Key 並開始會議。'
   );
   const [duration, setDuration] = useState(0);
-  // apiKey: uses built-in key by default; user can override
-  const [apiKey] = useState(BUILTIN_KEY);
-  const [showKeyOverride, setShowKeyOverride] = useState(false);
-  const [overrideKey, setOverrideKey] = useState('');
   const [speechLang, setSpeechLang] = useState('zh-TW');
   const [showResultToast, setShowResultToast] = useState(false);
   const [modalMessage, setModalMessage] = useState<string | null>(null);
@@ -129,8 +125,8 @@ const App: React.FC = () => {
   const analysisPanelRef = useRef<HTMLDivElement>(null);
   const modalShownRef = useRef<boolean>(false);
 
-  // Effective key: override takes priority over built-in
-  const effectiveKey = overrideKey.trim() || apiKey;
+  // Effective key: always use built-in key
+  const effectiveKey = BUILTIN_KEY;
 
   // Refs
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -224,8 +220,8 @@ const App: React.FC = () => {
 
   // ── Speech Recognition (STT) ───────────────
   const startRecording = () => {
-    if (!effectiveKey.trim()) {
-      setModalMessage('請先填入 Agnes API Key。');
+    if (!BUILTIN_KEY) {
+      setModalMessage('API Key 未設定。請前往 GitHub Actions Secrets 設定 VITE_AGNES_API_KEY。');
       return;
     }
 
@@ -374,41 +370,17 @@ const App: React.FC = () => {
           <p>Powered by Agnes AI · agnes-2.0-flash</p>
         </header>
 
-        {/* API Key & Language Config */}
+        {/* API Key Status & Language Config */}
         <div className="api-config-wrapper">
           <div className="api-config">
-            {/* Key status area */}
-            {BUILTIN_KEY && !showKeyOverride ? (
+            {BUILTIN_KEY && (
               <div className="key-badge-area">
                 <span className="key-badge">🔐 API Key 已內建</span>
-                <button
-                  className="key-override-btn"
-                  onClick={() => setShowKeyOverride(true)}
-                  title="使用您自己的 API Key 覆蓋"
-                >
-                  ✏️ 自訂
-                </button>
               </div>
-            ) : (
+            )}
+            {!BUILTIN_KEY && (
               <div className="key-input-area">
-                <input
-                  id="agnes-api-key"
-                  type="password"
-                  placeholder={BUILTIN_KEY ? '輸入自訂 Key（留空使用內建）' : 'Enter Agnes API Key (sk-...)'}
-                  value={overrideKey}
-                  onChange={(e) => setOverrideKey(e.target.value)}
-                  className="api-input"
-                  autoComplete="off"
-                />
-                {BUILTIN_KEY && (
-                  <button
-                    className="key-override-btn"
-                    onClick={() => { setShowKeyOverride(false); setOverrideKey(''); }}
-                    title="恢復使用內建 Key"
-                  >
-                    ↩ 復原
-                  </button>
-                )}
+                <p className="key-warning">⚠️ 請在 GitHub Actions Secrets 設定 VITE_AGNES_API_KEY</p>
               </div>
             )}
             <select
