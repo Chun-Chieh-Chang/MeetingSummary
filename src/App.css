@@ -81,7 +81,18 @@
 
 /* === Record Controls === */
 .record-controls { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; border-top: 1px solid var(--border); margin-top: auto; }
-.recording-status { display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-family: 'Monaco', monospace; font-weight: 600; color: var(--text-primary); }
+.recording-status { display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-family: 'Monaco', monospace; font-weight: 600; color: var(--text-primary); gap: 12px; }
+.segment-warning {
+  font-size: 0.8rem;
+  color: var(--error);
+  font-weight: 700;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
 
 .record-btn {
   width: 100%;

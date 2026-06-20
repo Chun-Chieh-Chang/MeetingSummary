@@ -122,6 +122,10 @@ const App: React.FC = () => {
   const [showResultToast, setShowResultToast] = useState(false);
   const [modalMessage, setModalMessage] = useState<string | null>(null);
   const [hasStoppedOnce, setHasStoppedOnce] = useState(false);
+  const [segmentTimer, setSegmentTimer] = useState(0);
+  const segmentIntervalRef = useRef<number | null>(null);
+  const SEGMENT_LIMIT = 4 * 60; // 4 minutes per segment
+  const SEGMENT_WARN_TIME = 3 * 60; // Warn at 3 minutes
   const analysisPanelRef = useRef<HTMLDivElement>(null);
   const modalShownRef = useRef<boolean>(false);
 
@@ -300,6 +304,20 @@ const App: React.FC = () => {
       timerRef.current = window.setInterval(() => {
         setDuration((prev) => prev + 1);
       }, 1000);
+
+      // Segment timer - auto-stop at 4 minutes
+      setSegmentTimer(0);
+      segmentIntervalRef.current = window.setInterval(() => {
+        setSegmentTimer((prev) => {
+          if (prev >= SEGMENT_LIMIT && isRecordingRef.current) {
+            // Auto-stop when reaching limit
+            stopRecording();
+            setModalMessage(`⏱️ 分段錄音限制：已連續錄音 ${Math.floor(SEGMENT_LIMIT / 60)} 分鐘。請點擊「繼續錄音」或「Stop & Analyze」。`);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1000);
     } catch (err) {
       console.error('Failed to start speech recognition:', err);
       isRecordingRef.current = false;
@@ -325,6 +343,11 @@ const App: React.FC = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+
+    if (segmentIntervalRef.current) {
+      clearInterval(segmentIntervalRef.current);
+      segmentIntervalRef.current = null;
     }
 
     const capturedTranscript = liveTranscriptRef.current.trim();
@@ -406,6 +429,11 @@ const App: React.FC = () => {
           <div className="recording-status">
             {isRecording && <span className="recording-indicator"></span>}
             <span className="timer">{formatTime(duration)}</span>
+            {isRecording && segmentTimer >= SEGMENT_WARN_TIME && (
+              <span className="segment-warning">
+                ⚠️ 剩餘 {Math.floor((SEGMENT_LIMIT - segmentTimer) / 60)} 分鐘
+              </span>
+            )}
           </div>
 
           <button
